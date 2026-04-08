@@ -1,3 +1,75 @@
+#!/bin/bash
+# ═══════════════════════════════════════
+# B.M.W 가계부 - 프로젝트 파일 자동 생성
+# bmw-expense 폴더 안에서 실행할 것
+# ═══════════════════════════════════════
+
+echo "🚗 B.M.W 가계부 파일 생성 시작..."
+
+# ─── 1) .env.local (여기에 Supabase 키 넣기) ───
+cat > .env.local << 'ENVEOF'
+NEXT_PUBLIC_SUPABASE_URL=여기에_Project_URL_붙여넣기
+NEXT_PUBLIC_SUPABASE_ANON_KEY=여기에_anon_key_붙여넣기
+ENVEOF
+
+# ─── 2) Supabase client ───
+mkdir -p src/lib
+cat > src/lib/supabase.ts << 'EOF'
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
+EOF
+
+# ─── 3) Layout ───
+cat > src/app/layout.tsx << 'EOF'
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "B.M.W 가계부",
+  description: "爸爸妈妈 AND ME",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="ko">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800;900&family=Noto+Sans+SC:wght@400;600;700;800;900&display=swap"
+          rel="stylesheet"
+        />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+EOF
+
+# ─── 4) globals.css ───
+cat > src/app/globals.css << 'EOF'
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: 'Noto Sans KR', 'Noto Sans SC', sans-serif;
+  background: #f5f5f7;
+  -webkit-font-smoothing: antialiased;
+}
+input, select, button {
+  font-family: inherit;
+}
+EOF
+
+# ─── 5) Main page ───
+cat > src/app/page.tsx << 'PAGEEOF'
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
@@ -657,3 +729,14 @@ const S: Record<string, React.CSSProperties> = {
   rptCard: { background: "#fff", borderRadius: 9, padding: 10, marginBottom: 7 },
   loading: { display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" },
 };
+PAGEEOF
+
+echo ""
+echo "✅ 파일 생성 완료!"
+echo ""
+echo "⚠️  중요! .env.local 파일을 열어서 Supabase 키를 입력해야 해:"
+echo "   NEXT_PUBLIC_SUPABASE_URL=https://osyfclfoomudpcuzeyht.supabase.co"
+echo "   NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ... (복사한 anon key)"
+echo ""
+echo "키 입력 후 아래 명령어로 앱 실행:"
+echo "   npm run dev"
