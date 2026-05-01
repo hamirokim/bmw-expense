@@ -12,7 +12,7 @@ const LANG: Record<string, Record<string, any>> = {
     appName: "B.M.W", appSub: "爸爸妈妈 AND ME",
     tabs: { dashboard: "대시보드", input: "입력", history: "내역", report: "리포트" },
     totalSpent: "이번 달 총 지출", bizSettle: "가게통장 입금 예정",
-    bizSettleNote: "국민+현대 개인지출분", cardGuide: "카드 사용 가이드",
+    bizSettleNote: "신한+국민+현대 개인지출분", cardGuide: "카드 사용 가이드",
     cardPerf: "카드별 실적", catTop: "카테고리별 지출 TOP",
     priority: "사용 우선순위", achieved: "달성", remaining: "잔여",
     noReq: "실적 무관", date: "날짜", recorder: "입력자", card: "카드",
@@ -22,7 +22,7 @@ const LANG: Record<string, Record<string, any>> = {
     bizAccount: "가게통장 입금액", benefitSummary: "카드 혜택 달성",
     catBreakdown: "카테고리별 지출", cardUsage: "카드별 사용액",
     notAchieved: "미달성", short: "부족", moreFor: "더 →",
-    noLimit: "적립 한도 없음", kookmin: "국민 쿠팡", hyundai: "현대 사업자",
+    noLimit: "적립 한도 없음", shinhan: "신한", kookmin: "국민 쿠팡", hyundai: "현대 사업자",
     won: "원", man: "만", vsLastMonth: "지난달 대비", noLastMonth: "지난달 데이터 없음",
     edit: "수정", cancel: "취소",
   },
@@ -30,7 +30,7 @@ const LANG: Record<string, Record<string, any>> = {
     appName: "B.M.W", appSub: "爸爸妈妈 AND ME",
     tabs: { dashboard: "仪表盘", input: "记账", history: "明细", report: "报表" },
     totalSpent: "本月总支出", bizSettle: "店铺账户待转入",
-    bizSettleNote: "国民+现代个人消费部分", cardGuide: "刷卡指南",
+    bizSettleNote: "新韩+国民+现代个人消费部分", cardGuide: "刷卡指南",
     cardPerf: "各卡实绩", catTop: "分类支出 TOP",
     priority: "刷卡优先顺序", achieved: "已达标", remaining: "还差",
     noReq: "无实绩要求", date: "日期", recorder: "记录人", card: "卡片",
@@ -40,7 +40,7 @@ const LANG: Record<string, Record<string, any>> = {
     bizAccount: "店铺账户转入金额", benefitSummary: "卡片优惠达标情况",
     catBreakdown: "分类支出", cardUsage: "各卡使用金额",
     notAchieved: "未达标", short: "不足", moreFor: "再刷 →",
-    noLimit: "无积分上限", kookmin: "国民 Coupang", hyundai: "现代 商务卡",
+    noLimit: "无积分上限", shinhan: "新韩", kookmin: "国民 Coupang", hyundai: "现代 商务卡",
     won: "韩元", man: "万", vsLastMonth: "对比上月", noLastMonth: "无上月数据",
     edit: "修改", cancel: "取消",
   },
@@ -50,7 +50,7 @@ const LANG: Record<string, Record<string, any>> = {
 const CARDS = [
   { id: "shinhan", name: { ko: "신한 신용", zh: "新韩信用卡" }, icon: "💳", color: "#0046FF",
     benefits: [{ threshold: 300000, ko: "전세대출 이자 감면", zh: "全租贷款利息减免" }],
-    priority: 1, prNote: { ko: "최우선 30만 채우기", zh: "最优先刷满30万" } },
+    priority: 1, prNote: { ko: "최우선 30만 채우기", zh: "最优先刷满30万" }, settleToBiz: true },
   { id: "samsung", name: { ko: "삼성 신용", zh: "三星信用卡" }, icon: "⚡", color: "#1428A0",
     benefits: [
       { threshold: 300000, ko: "전기차 충전 50% 할인 (한도 2만)", zh: "电车充电50%折扣(上限2万)" },
@@ -67,22 +67,136 @@ const CARDS = [
     ], priority: 4, prNote: { ko: "사업경비 해당 시 사용", zh: "商务费用时使用" }, settleToBiz: true },
 ];
 
-/* ═══ Categories ═══ */
+/* ═══ Categories ═══
+   기존 11개 ID는 모두 유지 (기존 데이터 호환). 신규 13개 추가.
+   keywords는 한국 가맹점/실제 결제내역 패턴 기반으로 풍부하게 작성.
+   classify()에서 "가장 긴 키워드 우선" 매칭 → specificity 보장.
+*/
 const CATS = [
-  { id: "food", ko: "식비", zh: "食材", emoji: "🍚", keywords: ["마트","이마트","홈플러스","쌀","고기","야채","과일","반찬","식재료"] },
-  { id: "eating_out", ko: "외식/배달", zh: "外食/外卖", emoji: "🍔", keywords: ["배달","쿠팡이츠","배민","요기요","맥도날드","치킨","피자","카페","스타벅스","커피","식당","밥","饭"] },
-  { id: "grocery", ko: "생활용품", zh: "生活用品", emoji: "🧴", keywords: ["다이소","생활용품","세제","휴지","치약","샴푸","쿠팡"] },
-  { id: "transport", ko: "교통/충전", zh: "交通/充电", emoji: "🚗", keywords: ["주유","충전","전기차","주차","톨비","고속도로","택시","교통","加油"] },
-  { id: "shopping", ko: "쇼핑/의류", zh: "购物/服装", emoji: "👕", keywords: ["옷","신발","유니클로","자라","무신사","네이버쇼핑","G마켓","11번가","옥션","淘宝"] },
-  { id: "baby", ko: "육아", zh: "育儿", emoji: "👶", keywords: ["기저귀","분유","이유식","아기","유아","장난감","어린이집","尿布","奶粉"] },
-  { id: "medical", ko: "의료", zh: "医疗", emoji: "🏥", keywords: ["병원","약국","의원","치과","한의원","안과","医院"] },
-  { id: "subscription", ko: "구독/멤버십", zh: "订阅/会员", emoji: "📱", keywords: ["구독","넷플릭스","유튜브","멤버십","와우","보험료"] },
-  { id: "utility", ko: "공과금", zh: "公共费用", emoji: "💡", keywords: ["전기","가스","수도","관리비","통신","인터넷","핸드폰","电费","水费"] },
-  { id: "event", ko: "경조사", zh: "红白事", emoji: "🎉", keywords: ["축의금","조의금","선물","돌잔치","결혼","红包"] },
+  // ── 식음료 (식재료 / 외식 / 배달 / 카페 / 패스트푸드 분리) ──
+  { id: "food", ko: "식비(마트)", zh: "食材(超市)", emoji: "🛒", keywords: [
+    "이마트","홈플러스","롯데마트","코스트코","트레이더스","하나로마트","농협하나로","GS더프레시","노브랜드","마켓컬리","컬리",
+    "마트","식재료","식자재","쌀","고기","한우","돼지","닭고기","야채","채소","과일","반찬","정육","수산","김치","계란"
+  ] },
+  { id: "eating_out", ko: "외식", zh: "外食", emoji: "🍴", keywords: [
+    "식당","한식","중식","일식","양식","분식","횟집","갈비","삼겹살","곱창","고깃집","백반","우동","라멘","초밥","회",
+    "김밥","밥상","식사","점심","저녁","회식","뷔페","오마카세","소바","돈까스","쌀국수","파스타","스테이크","스시",
+    "饭店","餐厅","料理"
+  ] },
+  { id: "delivery", ko: "배달", zh: "外卖", emoji: "🛵", keywords: [
+    "배달","배달의민족","배민","쿠팡이츠","요기요","배달팁","배달비","외배달"
+  ] },
+  { id: "cafe", ko: "카페/디저트", zh: "咖啡/甜品", emoji: "☕", keywords: [
+    "카페","커피","스타벅스","스벅","투썸","이디야","메가커피","메가MGC","컴포즈","빽다방","폴바셋","할리스","엔제리너스",
+    "공차","쥬씨","디저트","빵","베이커리","파리바게트","뚜레쥬르","던킨","도넛","아이스크림","베스킨","설빙",
+    "茶","咖啡","甜品"
+  ] },
+  { id: "fastfood", ko: "패스트푸드", zh: "快餐", emoji: "🍔", keywords: [
+    "맥도날드","맥날","버거킹","롯데리아","맘스터치","KFC","서브웨이","쉐이크쉑",
+    "피자","도미노","피자헛","미스터피자","파파존스",
+    "치킨","BBQ","BHC","교촌","굽네","네네치킨","처갓집","푸라닭","60계","호식이"
+  ] },
+
+  // ── 생활/쇼핑 ──
+  { id: "grocery", ko: "생활용품", zh: "生活用品", emoji: "🧴", keywords: [
+    "다이소","생활용품","세제","휴지","화장지","두루마리","키친타월","치약","칫솔","샴푸","린스","비누",
+    "세탁세제","섬유유연제","주방세제","청소","락스","수세미","건전지","마스크"
+  ] },
+  { id: "shopping", ko: "온라인쇼핑(종합)", zh: "网购(综合)", emoji: "📦", keywords: [
+    "쿠팡","SSG","신세계몰","11번가","G마켓","옥션","위메프","티몬","네이버쇼핑","스마트스토어","네이버페이",
+    "오늘의집","무신사","29CM","W컨셉","에이블리","지그재그",
+    "淘宝","京东","拼多多"
+  ] },
+  { id: "electronics", ko: "가전/디지털", zh: "家电/数码", emoji: "💻", keywords: [
+    "애플","apple","삼성전자","LG전자","아이폰","갤럭시","노트북","맥북","아이패드","ipad",
+    "모니터","키보드","마우스","이어폰","헤드폰","에어팟","airpods","가전","디지털","전자랜드","하이마트",
+    "쿠쿠","다이슨"
+  ] },
+  { id: "clothing", ko: "의류/잡화", zh: "服装/杂货", emoji: "👕", keywords: [
+    "옷","의류","신발","가방","유니클로","UNIQLO","자라","ZARA","H&M","스파오","탑텐","TOPTEN","8세컨즈",
+    "나이키","NIKE","아디다스","ADIDAS","뉴발란스","컨버스","닥터마틴","반스","호카",
+    "노스페이스","디스커버리","코오롱","K2","네파","아크네","COS","마뗑킴","스튜디오","아미"
+  ] },
+  { id: "furniture", ko: "가구/인테리어", zh: "家具/家居", emoji: "🛋️", keywords: [
+    "가구","인테리어","이케아","IKEA","한샘","리바트","일룸","시몬스","에이스침대","매트리스","침대","소파","책상","의자","조명","커튼","러그","수납","수납장"
+  ] },
+  { id: "beauty", ko: "미용/화장품", zh: "美容/化妆品", emoji: "💄", keywords: [
+    "화장품","올리브영","올영","시코르","CHICOR","세포라","SEPHORA","이니스프리","더페이스샵","미샤","아리따움","롭스","LOHBs",
+    "헤어샵","헤어","미용실","네일","마사지","피부관리","에스테틱","왁싱","태닝",
+    "化妆品","美发"
+  ] },
+
+  // ── 교통 ──
+  { id: "fuel", ko: "주유/충전", zh: "加油/充电", emoji: "⛽", keywords: [
+    "주유","주유소","SK주유소","SK에너지","GS칼텍스","현대오일뱅크","S-OIL","에쓰오일",
+    "충전","전기차충전","전기차","EV충전","EV","加油"
+  ] },
+  { id: "transport", ko: "대중교통/택시", zh: "交通/出租", emoji: "🚖", keywords: [
+    "지하철","버스","KTX","SRT","코레일","기차","티머니","모바일티머니","교통",
+    "택시","카카오택시","카카오T","우버","UBER","따릉이","킥보드","쏘카","SOCAR","그린카"
+  ] },
+  { id: "parking", ko: "주차/통행료", zh: "停车/过路费", emoji: "🅿️", keywords: [
+    "주차","주차장","주차요금","톨비","통행료","하이패스","고속도로","파크"
+  ] },
+
+  // ── 가족 ──
+  { id: "baby", ko: "육아", zh: "育儿", emoji: "👶", keywords: [
+    "기저귀","분유","이유식","아기","유아","장난감","어린이집","유치원","유아용품","아이","키즈","베이비",
+    "매일유업","남양유업","일동후디스","파스퇴르","압소바","오가닉맘","페도라","폴드","스토케",
+    "尿布","奶粉"
+  ] },
+  { id: "education", ko: "교육/도서", zh: "教育/书籍", emoji: "📚", keywords: [
+    "책","도서","교보문고","교보","YES24","예스24","알라딘","영풍문고","인터파크도서",
+    "학원","강의","인강","클래스101","패스트캠퍼스","코드잇","인프런","유데미","UDEMY"
+  ] },
+  { id: "pet", ko: "반려동물", zh: "宠物", emoji: "🐶", keywords: [
+    "강아지","고양이","반려동물","펫","사료","동물병원","펫샵","펫프렌즈","어바웃펫"
+  ] },
+
+  // ── 의료/건강 ──
+  { id: "medical", ko: "의료", zh: "医疗", emoji: "🏥", keywords: [
+    "병원","약국","의원","치과","한의원","안과","피부과","정형외과","산부인과","소아과","내과","이비인후과","비뇨기과",
+    "약","의약품","처방","진료비","医院","药店"
+  ] },
+
+  // ── 통신/공과금/구독 ──
+  { id: "telecom", ko: "통신비", zh: "通信费", emoji: "📞", keywords: [
+    "SKT","KT","LGU+","LG유플러스","유플러스","통신비","핸드폰","휴대폰","인터넷","와이파이","WIFI","알뜰폰","통화료","요금"
+  ] },
+  { id: "utility", ko: "공과금", zh: "公共费用", emoji: "💡", keywords: [
+    "전기","전기료","한국전력","한전","가스","가스비","도시가스","수도","수도료","상수도","관리비",
+    "电费","水费","燃气","物业费"
+  ] },
+  { id: "subscription", ko: "구독/멤버십", zh: "订阅/会员", emoji: "📱", keywords: [
+    "구독","넷플릭스","NETFLIX","유튜브","유튜브프리미엄","YOUTUBE","디즈니","디즈니플러스","웨이브","WAVVE","티빙","TVING","왓챠","쿠팡플레이",
+    "멜론","MELON","지니","FLO","스포티파이","SPOTIFY","애플뮤직","멤버십","와우멤버십",
+    "보험료","보험","ChatGPT","OpenAI","Claude","Notion","Adobe","어도비","Github","GitHub"
+  ] },
+
+  // ── 여가/여행/기타 ──
+  { id: "leisure", ko: "여가/문화", zh: "休闲/文化", emoji: "🎬", keywords: [
+    "영화","CGV","메가박스","롯데시네마","공연","콘서트","뮤지컬","연극","전시","박물관","미술관",
+    "놀이공원","에버랜드","롯데월드","서울랜드","아쿠아리움",
+    "스포츠","골프","스크린골프","헬스","요가","PT","필라테스","수영","볼링"
+  ] },
+  { id: "travel", ko: "여행/숙박", zh: "旅行/住宿", emoji: "✈️", keywords: [
+    "항공","비행기","대한항공","아시아나","제주항공","진에어","티웨이","에어부산",
+    "호텔","숙소","에어비앤비","Airbnb","야놀자","여기어때","부킹닷컴","Booking","아고다","Agoda",
+    "여행","투어","트리바고","트립닷컴","하나투어","모두투어","인터파크투어"
+  ] },
+  { id: "alcohol", ko: "술/담배", zh: "酒/烟", emoji: "🍺", keywords: [
+    "술","와인","맥주","소주","위스키","막걸리","사케","호프","술집","바BAR","펍","와인바","칵테일","주점","이자카야",
+    "담배","액상","전자담배","릴","말보로","에쎄"
+  ] },
+  { id: "event", ko: "경조사/선물", zh: "红白事/礼物", emoji: "🎁", keywords: [
+    "축의금","조의금","선물","돌잔치","결혼","부조","경조사","답례품","花束","红包","礼物"
+  ] },
+
+  // ── 기타 (fallback) ──
   { id: "etc", ko: "기타", zh: "其他", emoji: "📦", keywords: [] },
 ];
 
-const PIE_COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7","#DDA0DD","#98D8C8","#F7DC6F","#BB8FCE","#85C1E9","#F0B27A"];
+const PIE_COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7","#DDA0DD","#98D8C8","#F7DC6F","#BB8FCE","#85C1E9","#F0B27A","#82E0AA","#F8C471","#A9CCE3","#D2B4DE","#A3E4D7","#F5B7B1","#AED6F1","#FAD7A0","#D5DBDB","#E59866","#7FB3D5","#C39BD3","#76D7C4"];
 const fmt = (n: number) => n.toLocaleString("ko-KR") + "원";
 const todayStr = () => new Date().toISOString().split("T")[0];
 const monthKey = (d: string) => d.substring(0, 7);
@@ -99,11 +213,67 @@ interface Expense {
 }
 interface Rule { id?: number; keyword: string; category_id: string; }
 
-function classify(name: string, rules: Rule[]) {
-  const l = name.toLowerCase();
-  for (const r of rules) if (l.includes(r.keyword.toLowerCase())) return r.category_id;
-  for (const c of CATS) for (const k of c.keywords) if (l.includes(k)) return c.id;
-  return "etc";
+/* ═══ Classification engine ═══
+   - 공백 제거 후 substring 매칭 → "쿠팡 기저귀" / "쿠팡기저귀" 모두 잡힘
+   - rules + CATS keywords 모든 후보 수집
+   - 가장 긴 키워드 우선 → "스타벅스 강남점"이 "강남"(어딨건)보다 "스타벅스"로 매칭
+   - 동률이면 사용자 학습 rule이 우선
+*/
+const STOPWORDS = new Set([
+  "결제","지출","사용","구매","주문","결재","부가세","수수료","승인","취소","환불","현금","카드","신용","체크","원","월","일","건",
+  "the","and","for","with","from","com","www","http","https"
+]);
+
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, "");
+}
+
+function classify(name: string, rules: Rule[]): string {
+  if (!name) return "etc";
+  const norm = normalize(name);
+
+  type Cand = { kw: string; cat: string; src: "rule" | "cat" };
+  const cands: Cand[] = [];
+
+  for (const r of rules) {
+    const kw = normalize(r.keyword);
+    if (kw && norm.includes(kw)) cands.push({ kw, cat: r.category_id, src: "rule" });
+  }
+  for (const c of CATS) {
+    for (const k of c.keywords) {
+      const kw = normalize(k);
+      if (kw && norm.includes(kw)) cands.push({ kw, cat: c.id, src: "cat" });
+    }
+  }
+
+  if (cands.length === 0) return "etc";
+
+  cands.sort((a, b) => {
+    if (b.kw.length !== a.kw.length) return b.kw.length - a.kw.length;
+    if (a.src !== b.src) return a.src === "rule" ? -1 : 1;
+    return 0;
+  });
+  return cands[0].cat;
+}
+
+/* ═══ Token extraction (학습용) ═══
+   - 한글 2자 이상, 영문 3자 이상, 한자 1자 이상
+   - STOPWORDS 제외
+   - 너무 흔한 패턴(숫자만, 단위) 제외
+*/
+function extractTokens(name: string): string[] {
+  if (!name) return [];
+  const matches = name.match(/[가-힣]{2,}|[a-zA-Z]{3,}|[\u4e00-\u9fff]+/g) || [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const m of matches) {
+    const t = m.toLowerCase();
+    if (STOPWORDS.has(t)) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    result.push(t);
+  }
+  return result;
 }
 
 function getAdvice(mExp: Expense[], lang: string) {
@@ -154,7 +324,14 @@ export default function Home() {
     return CATS.filter((c) => m[c.id]).map((c) => ({ ...c, name: (c as any)[lang], total: m[c.id] })).sort((a, b) => b.total - a.total);
   }, [mExp, lang]);
   const total = useMemo(() => mExp.reduce((s, e) => s + e.amount, 0), [mExp]);
-  const bizSettle = useMemo(() => mExp.filter((e) => e.card_id === "kookmin" || e.card_id === "hyundai").reduce((s, e) => s + e.amount, 0), [mExp]);
+
+  // 가게통장 입금 = settleToBiz 플래그 있는 카드들의 합 (현재: 신한+국민+현대)
+  const settleCardIds = useMemo(() => CARDS.filter((c) => c.settleToBiz).map((c) => c.id), []);
+  const bizSettle = useMemo(
+    () => mExp.filter((e) => settleCardIds.includes(e.card_id)).reduce((s, e) => s + e.amount, 0),
+    [mExp, settleCardIds]
+  );
+
   const months = useMemo(() => {
     const s = new Set(expenses.map((e) => monthKey(e.date)));
     s.add(monthKey(todayStr()));
@@ -190,20 +367,47 @@ export default function Home() {
     }
   };
 
+  /* 카테고리 수정 시 학습 강화:
+     - 전체 item_name (정확 일치, 강한 매칭) → 무조건 저장/덮어쓰기
+     - 의미 있는 토큰들 (느슨한 매칭) → 충돌 없을 때만 저장
+       (이미 다른 카테고리에 등록된 토큰은 패스 - false positive 방지)
+  */
   const handleCatEdit = async (expId: number, newCat: string) => {
     const exp = expenses.find((e) => e.id === expId);
     await supabase.from("expenses").update({ category: newCat }).eq("id", expId);
     setExpenses((p) => p.map((e) => (e.id === expId ? { ...e, category: newCat } : e)));
+
     if (exp) {
-      const kw = exp.item_name.toLowerCase();
-      const existing = rules.find((r) => r.keyword.toLowerCase() === kw);
-      if (existing) {
-        await supabase.from("category_rules").update({ category_id: newCat }).eq("id", existing.id);
-        setRules((p) => p.map((r) => (r.id === existing.id ? { ...r, category_id: newCat } : r)));
-      } else {
-        const { data } = await supabase.from("category_rules").insert({ keyword: kw, category_id: newCat }).select().single();
-        if (data) setRules((p) => [...p, data]);
+      const fullKey = exp.item_name.trim().toLowerCase();
+      const tokens = extractTokens(exp.item_name);
+      const candidates = Array.from(new Set([fullKey, ...tokens])).filter(Boolean);
+
+      const updatedRules = [...rules];
+
+      for (const k of candidates) {
+        const idx = updatedRules.findIndex((r) => r.keyword.toLowerCase() === k);
+        const isFullKey = k === fullKey;
+
+        if (idx >= 0) {
+          // 기존 룰 존재
+          if (isFullKey) {
+            // 전체 일치는 무조건 덮어쓰기
+            if (updatedRules[idx].category_id !== newCat) {
+              await supabase.from("category_rules").update({ category_id: newCat }).eq("id", updatedRules[idx].id);
+              updatedRules[idx] = { ...updatedRules[idx], category_id: newCat };
+            }
+          } else {
+            // 토큰: 같은 카테고리면 그대로, 다른 카테고리면 충돌 → 패스
+            continue;
+          }
+        } else {
+          // 신규 룰 등록
+          const { data } = await supabase.from("category_rules").insert({ keyword: k, category_id: newCat }).select().single();
+          if (data) updatedRules.push(data);
+        }
       }
+
+      setRules(updatedRules);
     }
     setEditingCatId(null);
   };
@@ -520,7 +724,17 @@ export default function Home() {
               <div style={{ fontWeight: 700, fontSize: 14 }}>🏦 {t.bizAccount}</div>
               <div style={S.settleAmt}>{fmt(bizSettle)}</div>
               <div style={{ fontSize: 12, color: "#666" }}>
-                {t.kookmin}: {fmt(mExp.filter((e) => e.card_id === "kookmin").reduce((s, e) => s + e.amount, 0))} + {t.hyundai}: {fmt(mExp.filter((e) => e.card_id === "hyundai").reduce((s, e) => s + e.amount, 0))}
+                {settleCardIds.map((cid, i) => {
+                  const card = CARDS.find((c) => c.id === cid)!;
+                  const amt = mExp.filter((e) => e.card_id === cid).reduce((s, e) => s + e.amount, 0);
+                  const label = (card.name as any)[lang].split(" ")[0];
+                  return (
+                    <span key={cid}>
+                      {i > 0 && " + "}
+                      {label}: {fmt(amt)}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
