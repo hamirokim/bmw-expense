@@ -20,11 +20,11 @@ const LANG: Record<string, Record<string, any>> = {
     amount: "금액", amountUnit: "원", save: "저장", saved: "✅ 저장됨!",
     count: "건", noData: "이번 달 기록이 없어요", reportTotal: "총 지출",
     bizAccount: "가게통장 입금액", benefitSummary: "카드 혜택 달성",
-    catBreakdown: "카테고리별 지출", cardUsage: "카드별 사용액",
+    catBreakdown: "카테고리별 지출", cardUsage: "카드(현금)별 사용액",
     notAchieved: "미달성", short: "부족", moreFor: "더 →",
     noLimit: "적립 한도 없음", shinhan: "신한", kookmin: "국민 쿠팡", hyundai: "현대 사업자",
     won: "원", man: "만", vsLastMonth: "지난달 대비", noLastMonth: "지난달 데이터 없음",
-    edit: "수정", cancel: "취소",
+    edit: "수정", cancel: "취소", all: "전체",
   },
   zh: {
     appName: "B.M.W", appSub: "爸爸妈妈 AND ME",
@@ -38,11 +38,11 @@ const LANG: Record<string, Record<string, any>> = {
     amount: "金额", amountUnit: "韩元", save: "保存", saved: "✅ 已保存!",
     count: "笔", noData: "本月暂无记录", reportTotal: "总支出",
     bizAccount: "店铺账户转入金额", benefitSummary: "卡片优惠达标情况",
-    catBreakdown: "分类支出", cardUsage: "各卡使用金额",
+    catBreakdown: "分类支出", cardUsage: "各卡(现金)使用金额",
     notAchieved: "未达标", short: "不足", moreFor: "再刷 →",
     noLimit: "无积分上限", shinhan: "新韩", kookmin: "国民 Coupang", hyundai: "现代 商务卡",
     won: "韩元", man: "万", vsLastMonth: "对比上月", noLastMonth: "无上月数据",
-    edit: "修改", cancel: "取消",
+    edit: "修改", cancel: "取消", all: "全部",
   },
 };
 
@@ -66,6 +66,28 @@ const CARDS = [
       { threshold: 1000000, ko: "기본 1.5배 적립 + 사업경비 5% (한도 월 2만)", zh: "基本1.5倍积分 + 商务5%(月上限2万)" },
     ], priority: 4, prNote: { ko: "사업경비 해당 시 사용", zh: "商务费用时使用" }, settleToBiz: true },
 ];
+
+/* ═══ Cash (현금) ═══
+   현금은 카드가 아님 → 실적/혜택/우선순위/가게통장 정산에서 전부 제외.
+   결제수단으로만 취급: 입력/수정 선택, 내역 표시, 내역 필터, 카드별 사용액 차트에만 등장.
+   settleToBiz:false → 가게통장 정산 자동 제외. benefits:[] → 실적 게이지/혜택요약에서 의미 없음.
+   단, CARDS 배열에는 넣지 않으므로 실적/우선순위/혜택 화면에는 아예 렌더되지 않는다.
+*/
+const CASH = {
+  id: "cash",
+  name: { ko: "현금", zh: "现金" },
+  icon: "💵",
+  color: "#27ae60",
+  benefits: [] as { threshold: number; ko: string; zh: string }[],
+  priority: 99,
+  prNote: { ko: "", zh: "" },
+  settleToBiz: false,
+};
+
+/* PAYMENTS = 결제수단 전체(카드 4장 + 현금).
+   "결제수단을 고르거나 표시해야 하는 자리"에서만 사용한다.
+   실적/혜택/우선순위/정산 로직은 그대로 CARDS만 사용 → 현금이 섞이지 않는다. */
+const PAYMENTS = [...CARDS, CASH];
 
 /* ═══ Categories ═══
    기존 11개 ID는 모두 유지 (기존 데이터 호환). 신규 13개 추가.
@@ -303,6 +325,7 @@ export default function Home() {
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editForm, setEditForm] = useState<(Expense & { amount_str: string }) | null>(null);
+  const [histFilter, setHistFilter] = useState("all"); // 내역 탭 카드별 필터 ("all" | card_id | "cash")
 
   /* ─ Load ─ */
   useEffect(() => {
@@ -324,6 +347,13 @@ export default function Home() {
     return CATS.filter((c) => m[c.id]).map((c) => ({ ...c, name: (c as any)[lang], total: m[c.id] })).sort((a, b) => b.total - a.total);
   }, [mExp, lang]);
   const total = useMemo(() => mExp.reduce((s, e) => s + e.amount, 0), [mExp]);
+
+  // 내역 탭 전용: 선택된 결제수단으로만 필터 (대시보드/리포트의 total 은 건드리지 않음)
+  const histExp = useMemo(
+    () => (histFilter === "all" ? mExp : mExp.filter((e) => e.card_id === histFilter)),
+    [mExp, histFilter]
+  );
+  const histTotal = useMemo(() => histExp.reduce((s, e) => s + e.amount, 0), [histExp]);
 
   // 가게통장 입금 = settleToBiz 플래그 있는 카드들의 합 (현재: 신한+국민+현대)
   const settleCardIds = useMemo(() => CARDS.filter((c) => c.settleToBiz).map((c) => c.id), []);
@@ -613,7 +643,7 @@ export default function Home() {
               <div style={S.fRow}>
                 <label style={S.label}>{t.card}</label>
                 <div style={S.cardGrid}>
-                  {CARDS.map((c) => (
+                  {PAYMENTS.map((c) => (
                     <button key={c.id} onClick={() => setForm((f) => ({ ...f, cardId: c.id }))}
                       style={{ ...S.cardBtn, ...(form.cardId === c.id ? { borderColor: c.color, background: `${c.color}15` } : {}) }}>
                       <span style={{ fontSize: 15 }}>{c.icon}</span>
@@ -646,8 +676,20 @@ export default function Home() {
         {/* ━━━ HISTORY ━━━ */}
         {tab === "history" && (
           <>
-            <div style={S.hCount}>{mExp.length}{t.count} · {fmt(total)}</div>
-            {mExp.length === 0 && <div style={S.empty}>{t.noData}</div>}
+            <div style={S.histFilterRow}>
+              <button onClick={() => setHistFilter("all")}
+                style={{ ...S.histChip, ...(histFilter === "all" ? S.histChipAct : {}) }}>
+                {t.all}
+              </button>
+              {PAYMENTS.map((c) => (
+                <button key={c.id} onClick={() => setHistFilter(c.id)}
+                  style={{ ...S.histChip, ...(histFilter === c.id ? { borderColor: c.color, background: `${c.color}15`, color: c.color } : {}) }}>
+                  {c.icon} {(c.name as any)[lang].split(" ")[0]}
+                </button>
+              ))}
+            </div>
+            <div style={S.hCount}>{histExp.length}{t.count} · {fmt(histTotal)}</div>
+            {histExp.length === 0 && <div style={S.empty}>{t.noData}</div>}
 
             {editForm && (
               <div style={S.editOverlay}>
@@ -661,7 +703,7 @@ export default function Home() {
                     ))}
                   </div>
                   <div style={{ ...S.cardGrid, marginBottom: 10 }}>
-                    {CARDS.map((c) => (
+                    {PAYMENTS.map((c) => (
                       <button key={c.id} onClick={() => setEditForm((f) => f && ({ ...f, card_id: c.id }))}
                         style={{ ...S.cardBtn, ...(editForm.card_id === c.id ? { borderColor: c.color, background: `${c.color}15` } : {}) }}>
                         <span>{c.icon}</span><span style={{ fontSize: 11 }}>{(c.name as any)[lang].split(" ")[0]}</span>
@@ -678,8 +720,8 @@ export default function Home() {
               </div>
             )}
 
-            {[...mExp].sort((a, b) => b.date.localeCompare(a.date)).map((e) => {
-              const card = CARDS.find((c) => c.id === e.card_id);
+            {[...histExp].sort((a, b) => b.date.localeCompare(a.date)).map((e) => {
+              const card = PAYMENTS.find((c) => c.id === e.card_id);
               const cat = CATS.find((c) => c.id === e.category) || CATS.at(-1)!;
               return (
                 <div key={e.id} style={S.hItem}>
@@ -780,12 +822,12 @@ export default function Home() {
             <div style={S.secTitle}>{t.cardUsage}</div>
             <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
-                <BarChart data={CARDS.map((c) => ({ name: (c.name as any)[lang].split(" ")[0], amount: cardTotals[c.id] || 0 }))}>
+                <BarChart data={PAYMENTS.map((c) => ({ name: (c.name as any)[lang].split(" ")[0], amount: cardTotals[c.id] || 0 }))}>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t.man}`} tick={{ fontSize: 11 }} />
                   <Tooltip formatter={(v: any) => fmt(v)} />
                   <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
-                    {CARDS.map((c, i) => <Cell key={i} fill={c.color} />)}
+                    {PAYMENTS.map((c, i) => <Cell key={i} fill={c.color} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -851,6 +893,9 @@ const S: Record<string, React.CSSProperties> = {
   autoCat: { marginTop: 3, fontSize: 11, color: "#667eea", fontWeight: 600 },
   submitBtn: { width: "100%", padding: "12px", border: "none", borderRadius: 10, background: "linear-gradient(135deg,#667eea,#764ba2)", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", marginTop: 2 },
   hCount: { fontSize: 13, color: "#888", marginBottom: 10, fontWeight: 600 },
+  histFilterRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, WebkitOverflowScrolling: "touch" as any },
+  histChip: { flexShrink: 0, padding: "6px 12px", border: "1.5px solid #ddd", borderRadius: 20, background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" as const, color: "#666" },
+  histChipAct: { borderColor: "#667eea", background: "#667eea15", color: "#667eea" },
   empty: { textAlign: "center", padding: 36, color: "#bbb", fontSize: 13 },
   hItem: { background: "#fff", borderRadius: 10, padding: 10, marginBottom: 7, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },
   hTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 },
