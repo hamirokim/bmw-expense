@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
@@ -220,7 +220,10 @@ const CATS = [
 
 const PIE_COLORS = ["#FF6B6B","#4ECDC4","#45B7D1","#96CEB4","#FFEAA7","#DDA0DD","#98D8C8","#F7DC6F","#BB8FCE","#85C1E9","#F0B27A","#82E0AA","#F8C471","#A9CCE3","#D2B4DE","#A3E4D7","#F5B7B1","#AED6F1","#FAD7A0","#D5DBDB","#E59866","#7FB3D5","#C39BD3","#76D7C4"];
 const fmt = (n: number) => n.toLocaleString("ko-KR") + "원";
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
 const monthKey = (d: string) => d.substring(0, 7);
 
 interface Expense {
@@ -320,12 +323,50 @@ export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [selMonth, setSelMonth] = useState(monthKey(todayStr()));
-  const [form, setForm] = useState({ date: todayStr(), recorder: "머슴", cardId: "shinhan", itemName: "", amount: "" });
+  const [currentDay, setCurrentDay] = useState(todayStr);
+  const previousDay = useRef(currentDay);
+  const [selMonth, setSelMonth] = useState(monthKey(currentDay));
+  const [form, setForm] = useState({ date: currentDay, recorder: "머슴", cardId: "shinhan", itemName: "", amount: "" });
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editForm, setEditForm] = useState<(Expense & { amount_str: string }) | null>(null);
   const [histFilter, setHistFilter] = useState("all"); // 내역 탭 카드별 필터 ("all" | card_id | "cash")
+
+  /* ─ Follow the device's local date, including midnight and timezone changes ─ */
+  useEffect(() => {
+    let midnightTimer: ReturnType<typeof setTimeout>;
+    const scheduleMidnight = () => {
+      clearTimeout(midnightTimer);
+      const nextMidnight = new Date();
+      nextMidnight.setHours(24, 0, 0, 0);
+      midnightTimer = setTimeout(syncToday, Math.max(0, nextMidnight.getTime() - Date.now() + 20));
+    };
+    const syncToday = () => {
+      const nextDay = todayStr();
+      const oldDay = previousDay.current;
+      if (nextDay !== oldDay) {
+        previousDay.current = nextDay;
+        setCurrentDay(nextDay);
+        setForm((f) => f.date === oldDay ? { ...f, date: nextDay } : f);
+        setSelMonth((m) => m === monthKey(oldDay) ? monthKey(nextDay) : m);
+      }
+      scheduleMidnight();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") syncToday();
+    };
+
+    syncToday();
+    const poll = setInterval(syncToday, 30_000);
+    window.addEventListener("focus", syncToday);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearTimeout(midnightTimer);
+      clearInterval(poll);
+      window.removeEventListener("focus", syncToday);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   /* ─ Load ─ */
   useEffect(() => {
@@ -364,9 +405,9 @@ export default function Home() {
 
   const months = useMemo(() => {
     const s = new Set(expenses.map((e) => monthKey(e.date)));
-    s.add(monthKey(todayStr()));
+    s.add(monthKey(currentDay));
     return [...s].sort().reverse();
-  }, [expenses]);
+  }, [expenses, currentDay]);
 
   // Month comparison
   const prevMK = useMemo(() => {
