@@ -47,3 +47,8 @@
 ## 7. 남은 판단 (로이)
 - 대시보드 접힘 기본값: 지금은 '카드 사용 가이드'만 급할 때 펼침. 전부 펼쳐 두고 싶으면 `isOpen(id, 기본값)`의 기본값만 바꾸면 됨.
 - 리포트 도넛 차트를 막대 목록으로 바꿨음. 도넛이 더 좋으면 되돌릴 수 있음.
+
+## 8. 배포 (2026-11-03 08:40 KST)
+- 로이 "배포해" (스레드 메시지) → `ui-gimgane-v5`를 main에 fast-forward(6aa2ca4) 후 `git push origin main`.
+- Vercel 상태 success, `https://bmw-expense.vercel.app` 200 응답, 새 CSS 토큰(`--dot-ring`) 서빙 확인.
+- 되돌리기: `git revert 6aa2ca4 && git push origin main` (데이터 영향 없음, 화면만 원래대로).
