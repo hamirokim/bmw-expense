@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 가족 지출이 보이는 스크린샷은 public 저장소에 올리지 않음
+/handoff/screens/
