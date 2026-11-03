@@ -25,6 +25,12 @@ const LANG: Record<string, Record<string, any>> = {
     noLimit: "적립 한도 없음", shinhan: "신한", kookmin: "국민 쿠팡", hyundai: "현대 사업자",
     won: "원", man: "만", vsLastMonth: "지난달 대비", noLastMonth: "지난달 데이터 없음",
     edit: "수정", cancel: "취소", all: "전체",
+    monthSpent: "월 지출", mUnit: "월", sameAsPrev: "지난달과 같아요.",
+    today: "오늘", yesterday: "어제", del: "삭제", delConfirm: "한 번 더 누르면 삭제돼요", autoCatLabel: "자동 분류",
+    diffLine: (m: string, more: boolean) => [`${m}월보다 `, more ? " 더 썼어요." : " 덜 썼어요."],
+    wowCash: "예상 쿠팡캐시", wowPromo: "프로모션 적용 (~27.4.30)", wowBase: "기본 혜택",
+    wowCoupang: "쿠팡·이츠·플레이", wowOther: "그 외 가맹점", wowCvs: "편의점 추가", wowCafe: "카페 추가",
+    wowCapHit: "한도 다 참", wowRoom: "쿠팡 한도까지", wowNote: "물품명으로 추정한 예상치야. 해외결제 추가 1%는 구분이 안 돼서 빠져 있어.",
   },
   zh: {
     appName: "B.M.W", appSub: "爸爸妈妈 AND ME",
@@ -43,6 +49,12 @@ const LANG: Record<string, Record<string, any>> = {
     noLimit: "无积分上限", shinhan: "新韩", kookmin: "国民 Coupang", hyundai: "现代 商务卡",
     won: "韩元", man: "万", vsLastMonth: "对比上月", noLastMonth: "无上月数据",
     edit: "修改", cancel: "取消", all: "全部",
+    monthSpent: "月支出", mUnit: "月", sameAsPrev: "与上月持平。",
+    today: "今天", yesterday: "昨天", del: "删除", delConfirm: "再按一次即删除", autoCatLabel: "自动分类",
+    diffLine: (m: string, more: boolean) => [`比${m}月${more ? "多" : "少"}花了 `, ""],
+    wowCash: "预计 Coupang Cash", wowPromo: "促销适用 (~27.4.30)", wowBase: "基本优惠",
+    wowCoupang: "Coupang·Eats·Play", wowOther: "其他商户", wowCvs: "便利店追加", wowCafe: "咖啡店追加",
+    wowCapHit: "已达上限", wowRoom: "距 Coupang 上限", wowNote: "按商品名估算。海外消费追加1%无法区分,未计入。",
   },
 };
 
@@ -57,7 +69,8 @@ const CARDS = [
       { threshold: 600000, ko: "전기차 충전 70% 할인 (한도 3만)", zh: "电车充电70%折扣(上限3万)" },
     ], priority: 2, prNote: { ko: "신한 달성 후 → 60만 목표", zh: "新韩达标后 → 目标60万" } },
   { id: "kookmin", name: { ko: "국민 쿠팡와우", zh: "国民 Coupang Wow" }, icon: "🛒", color: "#FFBB00",
-    benefits: [{ threshold: 0, ko: "쿠팡 2%, 기타 0.2% 캐시적립 (한도 2만)", zh: "Coupang 2%, 其他0.2%返现(上限2万)" }],
+    // 적립률·한도는 아래 WOW 계산(calcWowCash)이 월별로 계산한다. 이 문구는 상시(기본) 혜택 요약.
+    benefits: [{ threshold: 0, ko: "쿠팡 2% (월 2만), 기타 0.2% (월 2천) 쿠팡캐시", zh: "Coupang 2%(月2万), 其他0.2%(月2千) Coupang Cash" }],
     priority: 3, prNote: { ko: "쿠팡 구매 시 사용", zh: "Coupang购物时使用" }, settleToBiz: true },
   { id: "hyundai", name: { ko: "현대 사업자", zh: "现代 商务卡" }, icon: "🏢", color: "#003D6B",
     benefits: [
@@ -97,10 +110,14 @@ const PAYMENTS = [...CARDS, CASH];
 const CATS = [
   // ── 식음료 (식재료 / 외식 / 배달 / 카페 / 패스트푸드 분리) ──
   { id: "food", ko: "식비(마트)", zh: "食材(超市)", emoji: "🛒", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "超市","零食","薯片","水果","蔬菜","鸡蛋","牛奶","酸奶","豆腐","面粉","大米","치즈","탄산수","우유","두부","라면","과자","밀가루","블루베리",
     "이마트","홈플러스","롯데마트","코스트코","트레이더스","하나로마트","농협하나로","GS더프레시","노브랜드","마켓컬리","컬리",
     "마트","식재료","식자재","쌀","고기","한우","돼지","닭고기","야채","채소","과일","반찬","정육","수산","김치","계란"
   ] },
   { id: "eating_out", ko: "외식", zh: "外食", emoji: "🍴", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "晚饭","午饭","早饭","吃饭","外食","火锅","烤肉","羊肉串","麻辣烫","饺子","面馆","마라탕","국밥","양꼬치","샌드위치","외식","칼국수","짜장","짬뽕","냉면","순대","떡볶이","쪽갈비","족발","보쌈",
     "식당","한식","중식","일식","양식","분식","횟집","갈비","삼겹살","곱창","고깃집","백반","우동","라멘","초밥","회",
     "김밥","밥상","식사","점심","저녁","회식","뷔페","오마카세","소바","돈까스","쌀국수","파스타","스테이크","스시",
     "饭店","餐厅","料理"
@@ -109,6 +126,8 @@ const CATS = [
     "배달","배달의민족","배민","쿠팡이츠","요기요","배달팁","배달비","외배달"
   ] },
   { id: "cafe", ko: "카페/디저트", zh: "咖啡/甜品", emoji: "☕", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "奶茶","冰淇淋","面包店",
     "카페","커피","스타벅스","스벅","투썸","이디야","메가커피","메가MGC","컴포즈","빽다방","폴바셋","할리스","엔제리너스",
     "공차","쥬씨","디저트","빵","베이커리","파리바게트","뚜레쥬르","던킨","도넛","아이스크림","베스킨","설빙",
     "茶","咖啡","甜品"
@@ -121,20 +140,28 @@ const CATS = [
 
   // ── 생활/쇼핑 ──
   { id: "grocery", ko: "생활용품", zh: "生活用品", emoji: "🧴", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "湿巾","纸巾","洗发水","牙膏","卫生巾","洗衣液","日用品","물티슈","생리대","가습기",
     "다이소","생활용품","세제","휴지","화장지","두루마리","키친타월","치약","칫솔","샴푸","린스","비누",
     "세탁세제","섬유유연제","주방세제","청소","락스","수세미","건전지","마스크"
   ] },
   { id: "shopping", ko: "온라인쇼핑(종합)", zh: "网购(综合)", emoji: "📦", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "免税店","免税","网购","新世界","百货","乐天","면세점",
     "쿠팡","SSG","신세계몰","11번가","G마켓","옥션","위메프","티몬","네이버쇼핑","스마트스토어","네이버페이",
     "오늘의집","무신사","29CM","W컨셉","에이블리","지그재그",
     "淘宝","京东","拼多多"
   ] },
   { id: "electronics", ko: "가전/디지털", zh: "家电/数码", emoji: "💻", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "케이블","충전기","数据线","充电器","耳机",
     "애플","apple","삼성전자","LG전자","아이폰","갤럭시","노트북","맥북","아이패드","ipad",
     "모니터","키보드","마우스","이어폰","헤드폰","에어팟","airpods","가전","디지털","전자랜드","하이마트",
     "쿠쿠","다이슨"
   ] },
   { id: "clothing", ko: "의류/잡화", zh: "服装/杂货", emoji: "👕", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "衣服","裙子","裤子","短袖","长袖","外套","毛衣","鞋","스커트","치마","바지","티셔츠",
     "옷","의류","신발","가방","유니클로","UNIQLO","자라","ZARA","H&M","스파오","탑텐","TOPTEN","8세컨즈",
     "나이키","NIKE","아디다스","ADIDAS","뉴발란스","컨버스","닥터마틴","반스","호카",
     "노스페이스","디스커버리","코오롱","K2","네파","아크네","COS","마뗑킴","스튜디오","아미"
@@ -143,6 +170,8 @@ const CATS = [
     "가구","인테리어","이케아","IKEA","한샘","리바트","일룸","시몬스","에이스침대","매트리스","침대","소파","책상","의자","조명","커튼","러그","수납","수납장"
   ] },
   { id: "beauty", ko: "미용/화장품", zh: "美容/化妆品", emoji: "💄", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "腮红","唇釉","口红","面膜","卸妆","防晒","香水","化妆","眼影","썬크림","선크림","마스카라","미스트","립스틱",
     "화장품","올리브영","올영","시코르","CHICOR","세포라","SEPHORA","이니스프리","더페이스샵","미샤","아리따움","롭스","LOHBs",
     "헤어샵","헤어","미용실","네일","마사지","피부관리","에스테틱","왁싱","태닝",
     "化妆品","美发"
@@ -150,6 +179,8 @@ const CATS = [
 
   // ── 교통 ──
   { id: "fuel", ko: "주유/충전", zh: "加油/充电", emoji: "⛽", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "充电","冲电","电车充电",
     "주유","주유소","SK주유소","SK에너지","GS칼텍스","현대오일뱅크","S-OIL","에쓰오일",
     "충전","전기차충전","전기차","EV충전","EV","加油"
   ] },
@@ -158,11 +189,15 @@ const CATS = [
     "택시","카카오택시","카카오T","우버","UBER","따릉이","킥보드","쏘카","SOCAR","그린카"
   ] },
   { id: "parking", ko: "주차/통행료", zh: "停车/过路费", emoji: "🅿️", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "停车","停车费",
     "주차","주차장","주차요금","톨비","통행료","하이패스","고속도로","파크"
   ] },
 
   // ── 가족 ──
   { id: "baby", ko: "육아", zh: "育儿", emoji: "👶", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "尿不湿","玩具","婴儿","宝宝",
     "기저귀","분유","이유식","아기","유아","장난감","어린이집","유치원","유아용품","아이","키즈","베이비",
     "매일유업","남양유업","일동후디스","파스퇴르","압소바","오가닉맘","페도라","폴드","스토케",
     "尿布","奶粉"
@@ -172,11 +207,15 @@ const CATS = [
     "학원","강의","인강","클래스101","패스트캠퍼스","코드잇","인프런","유데미","UDEMY"
   ] },
   { id: "pet", ko: "반려동물", zh: "宠物", emoji: "🐶", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "猫粮","狗粮","猫砂",
     "강아지","고양이","반려동물","펫","사료","동물병원","펫샵","펫프렌즈","어바웃펫"
   ] },
 
   // ── 의료/건강 ──
   { id: "medical", ko: "의료", zh: "医疗", emoji: "🏥", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "急诊","诊疗","治疗","打针","疫苗","住院","挂号","药","치료","접종","예방주사","입원","응급","검진",
     "병원","약국","의원","치과","한의원","안과","피부과","정형외과","산부인과","소아과","내과","이비인후과","비뇨기과",
     "약","의약품","처방","진료비","医院","药店"
   ] },
@@ -211,6 +250,8 @@ const CATS = [
     "담배","액상","전자담배","릴","말보로","에쎄"
   ] },
   { id: "event", ko: "경조사/선물", zh: "红白事/礼物", emoji: "🎁", keywords: [
+    // 2026-11-03 추가: 중국어 입력·실제 내역에서 자주 놓친 단어
+    "送礼","生日","礼金",
     "축의금","조의금","선물","돌잔치","결혼","부조","경조사","답례품","花束","红包","礼物"
   ] },
 
@@ -301,6 +342,89 @@ function extractTokens(name: string): string[] {
   return result;
 }
 
+/* ═══ 분류 A: 내 기록 기반 학습 (2026-11-03) ═══
+   기존 classify()(키워드·규칙 최장 일치)는 그대로 두고, 그 위에 "지금까지 저장된 내역"을 학습해 점수를 더한다.
+   - 같은 물품명을 예전에 어떤 카테고리로 저장했는지 (최근 기록일수록 가중치 ↑)  → 가장 강함
+   - 물품명 단어별로 예전에 많이 쓰인 카테고리 (단어 투표)
+   - 띄어쓰기 없이 붙여 쓴 이름은 두 글자 조각 유사도로 비슷한 과거 물품명을 찾음
+   - '기타(etc)'로 저장된 과거 기록은 학습에서 뺀다 (모르는 것을 배우지 않게)
+   Supabase에 새 테이블·쓰기를 추가하지 않는다. 읽어온 expenses/category_rules만 쓴다. */
+type CatScore = Record<string, number>;
+interface ClassModel {
+  exact: Map<string, CatScore>;
+  tok: Map<string, CatScore>;
+  grams: Map<string, { g: Set<string>; cat: string }>;
+}
+const addScore = (m: Map<string, CatScore>, k: string, cat: string, w: number) => {
+  const o = m.get(k) || {};
+  o[cat] = (o[cat] || 0) + w;
+  m.set(k, o);
+};
+const sumScore = (o: CatScore) => Object.values(o).reduce((a, b) => a + b, 0);
+function bigrams(name: string): Set<string> {
+  const n = normalize(name);
+  const g = new Set<string>();
+  for (let i = 0; i < n.length - 1; i++) g.add(n.slice(i, i + 2));
+  return g;
+}
+/* 학습용 단어: 기존 extractTokens + 중국어는 붙여 쓰므로 두 글자씩 쪼갬 ("儿子急诊" → 儿子, 子急, 急诊) */
+function modelTokens(name: string): string[] {
+  const out = new Set(extractTokens(name));
+  for (const run of name.match(/[\u4e00-\u9fff]{3,}/g) || []) for (let i = 0; i < run.length - 1; i++) out.add(run.slice(i, i + 2));
+  return [...out];
+}
+function buildClassModel(exps: Expense[]): ClassModel {
+  const exact = new Map<string, CatScore>(), tok = new Map<string, CatScore>();
+  const grams = new Map<string, { g: Set<string>; cat: string }>();
+  const sorted = [...exps].sort((a, b) => (a.date + (a.created_at || "")).localeCompare(b.date + (b.created_at || "")));
+  sorted.forEach((e, i) => {
+    if (!e.item_name || !e.category || e.category === "etc") return;
+    const w = 1 + i / Math.max(sorted.length, 1); // 오래된 기록 1 → 최근 기록 2
+    const k = normalize(e.item_name);
+    addScore(exact, k, e.category, w);
+    for (const t of modelTokens(e.item_name)) addScore(tok, t, e.category, w);
+    grams.set(k, { g: bigrams(e.item_name), cat: e.category }); // 같은 이름은 가장 최근 카테고리
+  });
+  return { exact, tok, grams };
+}
+/* 카테고리 후보를 점수순으로. 첫 번째가 자동 분류 결과. */
+function rankCategories(name: string, rules: Rule[], model: ClassModel): { cat: string; score: number }[] {
+  const sc: CatScore = {};
+  const add = (cat: string, v: number) => { if (cat && cat !== "etc") sc[cat] = (sc[cat] || 0) + v; };
+  const n = normalize(name || "");
+  if (!n) return [{ cat: "etc", score: 0 }];
+
+  // ① 사용자가 직접 고친 이름 그대로 (category_rules 전체 이름 일치)
+  for (const r of rules) if (normalize(r.keyword) === n) add(r.category_id, 100);
+  // ② 같은 물품명의 과거 기록
+  const ex = model.exact.get(n);
+  if (ex) { const tot = sumScore(ex); for (const c in ex) add(c, 80 * ex[c] / tot); }
+  // ③ 기존 키워드·규칙 최장 일치 (기존 classify 그대로)
+  const kw = classify(name, rules);
+  if (kw !== "etc") add(kw, 40);
+  // ④ 단어 투표
+  const toks = modelTokens(name).filter((t) => model.tok.has(t));
+  for (const t of toks) {
+    const d = model.tok.get(t)!, tot = sumScore(d);
+    const conf = Math.min(1, tot / 2); // 한 번만 나온 단어는 절반만 믿음
+    for (const c in d) add(c, (35 / toks.length) * (d[c] / tot) * conf);
+  }
+  // ⑤ 붙여 쓴 이름: 두 글자 조각이 비슷한 과거 물품명
+  const g = bigrams(name);
+  if (g.size >= 2) {
+    const best: CatScore = {};
+    model.grams.forEach((v) => {
+      let inter = 0;
+      g.forEach((x) => { if (v.g.has(x)) inter++; });
+      const sim = inter / (g.size + v.g.size - inter);
+      if (sim >= 0.4 && sim > (best[v.cat] || 0)) best[v.cat] = sim;
+    });
+    for (const c in best) add(c, 40 * best[c]);
+  }
+  const ranked = Object.entries(sc).map(([cat, score]) => ({ cat, score })).sort((a, b) => b.score - a.score);
+  return ranked.length && ranked[0].score >= 12 ? ranked : [{ cat: "etc", score: 0 }, ...ranked];
+}
+
 function getAdvice(mExp: Expense[], lang: string) {
   const t: Record<string, number> = {};
   CARDS.forEach((c) => (t[c.id] = 0));
@@ -315,6 +439,49 @@ function getAdvice(mExp: Expense[], lang: string) {
   return { cardTotals: t, advice: adv };
 }
 
+/* ═══ 쿠팡 와우카드(국민) 예상 쿠팡캐시 계산 ═══
+   출처(2026-11-03 확인):
+   - 상시 혜택: KB국민카드 상품 페이지 — 쿠팡·쿠팡이츠·쿠팡플레이 2%(월 2만), 그 외 0.2%(월 2천), 전월실적 조건 없음
+   - 프로모션 2026-11-01 ~ 2027-04-30: 쿠팡 뉴스룸 보도자료(2026-10-26)
+     쿠팡 3.5%(월 3.5만) / 그 외 1%(월 1만) / 편의점 4사·카페·해외결제 각 +1%(각 월 1만)
+   한계: 해외결제는 장부 데이터로 구분 불가 → 계산 제외. 가맹점 구분은 물품명 키워드로 추정.
+   실제 적립액은 카드사 기준(매입일·취소·제외 가맹점)이라 다를 수 있음 → 화면에 "예상"으로만 표시.
+   이 계산은 화면 표시용이며 Supabase 데이터는 읽기만 한다. */
+const WOW_PROMO = { from: "2026-11", to: "2027-04" };
+const isWowPromo = (mk: string) => mk >= WOW_PROMO.from && mk <= WOW_PROMO.to;
+const WOW_COUPANG_KW = ["쿠팡", "coupang"]; // 쿠팡이츠·쿠팡플레이 포함
+const WOW_CVS_KW = ["gs25", "지에스25", "씨유", "cu편의점", "세븐일레븐", "7eleven", "이마트24", "emart24"];
+const WOW_CAFE_KW = ["카페", "커피", "스타벅스", "스벅", "투썸", "이디야", "메가커피", "메가mgc", "컴포즈", "빽다방", "폴바셋", "할리스", "엔제리너스", "starbucks"];
+type WowZone = "coupang" | "cvs" | "cafe" | "other";
+function wowZone(name: string): WowZone {
+  const n = normalize(name || "");
+  if (WOW_COUPANG_KW.some((k) => n.includes(k))) return "coupang";
+  // "CU"는 짧아서 단어 단위로만 인정 (예: "CU 역삼점", "cu")
+  if (WOW_CVS_KW.some((k) => n.includes(k)) || /(^|[^a-z])cu([^a-z]|$)/i.test(name || "")) return "cvs";
+  if (WOW_CAFE_KW.some((k) => n.includes(k))) return "cafe";
+  return "other";
+}
+interface WowCash {
+  promo: boolean;
+  spend: Record<WowZone, number>;
+  coupang: number; other: number; cvs: number; cafe: number; total: number;
+  coupangCap: number; coupangRate: number; coupangRoom: number; // 쿠팡 한도까지 남은 결제액
+}
+function calcWowCash(exps: Expense[], mk: string): WowCash {
+  const promo = isWowPromo(mk);
+  const spend: Record<WowZone, number> = { coupang: 0, cvs: 0, cafe: 0, other: 0 };
+  exps.filter((e) => e.card_id === "kookmin").forEach((e) => { spend[wowZone(e.item_name)] += e.amount; });
+  const coupangRate = promo ? 0.035 : 0.02, coupangCap = promo ? 35000 : 20000;
+  const otherRate = promo ? 0.01 : 0.002, otherCap = promo ? 10000 : 2000;
+  const nonCoupang = spend.cvs + spend.cafe + spend.other; // 편의점·카페도 '그 외 가맹점' 기본 적립 대상
+  const coupang = Math.min(Math.floor(spend.coupang * coupangRate), coupangCap);
+  const other = Math.min(Math.floor(nonCoupang * otherRate), otherCap);
+  const cvs = promo ? Math.min(Math.floor(spend.cvs * 0.01), 10000) : 0;
+  const cafe = promo ? Math.min(Math.floor(spend.cafe * 0.01), 10000) : 0;
+  const coupangRoom = Math.max(Math.ceil(coupangCap / coupangRate) - spend.coupang, 0);
+  return { promo, spend, coupang, other, cvs, cafe, total: coupang + other + cvs + cafe, coupangCap, coupangRate, coupangRoom };
+}
+
 /* ═══ MAIN ═══ */
 export default function Home() {
   const [lang, setLang] = useState("ko");
@@ -326,7 +493,7 @@ export default function Home() {
   const [currentDay, setCurrentDay] = useState(todayStr);
   const previousDay = useRef(currentDay);
   const [selMonth, setSelMonth] = useState(monthKey(currentDay));
-  const [form, setForm] = useState({ date: currentDay, recorder: "머슴", cardId: "shinhan", itemName: "", amount: "" });
+  const [form, setForm] = useState({ date: currentDay, recorder: "머슴", cardId: "shinhan", itemName: "", amount: "", catOverride: "" });
   const [editingCatId, setEditingCatId] = useState<number | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [editForm, setEditForm] = useState<(Expense & { amount_str: string }) | null>(null);
@@ -382,6 +549,9 @@ export default function Home() {
   /* ─ Computed ─ */
   const mExp = useMemo(() => expenses.filter((e) => monthKey(e.date) === selMonth), [expenses, selMonth]);
   const { cardTotals, advice } = useMemo(() => getAdvice(mExp, lang), [mExp, lang]);
+  const wow = useMemo(() => calcWowCash(mExp, selMonth), [mExp, selMonth]);
+  const classModel = useMemo(() => buildClassModel(expenses), [expenses]);
+  const bestCat = (name: string) => rankCategories(name, rules, classModel)[0].cat;
   const catTotals = useMemo(() => {
     const m: Record<string, number> = {};
     mExp.forEach((e) => (m[e.category] = (m[e.category] || 0) + e.amount));
@@ -427,12 +597,12 @@ export default function Home() {
   /* ─ Handlers ─ */
   const handleSubmit = async () => {
     if (!form.itemName.trim() || !form.amount) return;
-    const cat = classify(form.itemName, rules);
+    const cat = form.catOverride || bestCat(form.itemName);
     const row: Expense = { date: form.date, recorder: form.recorder, card_id: form.cardId, item_name: form.itemName.trim(), amount: parseInt(form.amount), category: cat };
     const { data, error } = await supabase.from("expenses").insert(row).select().single();
     if (!error && data) {
       setExpenses((p) => [data, ...p]);
-      setForm((f) => ({ ...f, itemName: "", amount: "" }));
+      setForm((f) => ({ ...f, itemName: "", amount: "", catOverride: "" }));
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 1500);
     }
@@ -486,7 +656,9 @@ export default function Home() {
   const handleEditStart = (exp: Expense) => setEditForm({ ...exp, amount_str: exp.amount.toString() });
   const handleEditSave = async () => {
     if (!editForm) return;
-    const cat = classify(editForm.item_name, rules);
+    const orig = expenses.find((e) => e.id === editForm.id);
+    // 물품명을 안 바꿨으면 기존 카테고리(직접 고친 것 포함) 유지, 바꿨을 때만 다시 분류
+    const cat = orig && orig.item_name === editForm.item_name ? orig.category : bestCat(editForm.item_name);
     await supabase.from("expenses").update({ date: editForm.date, recorder: editForm.recorder, card_id: editForm.card_id, item_name: editForm.item_name, amount: parseInt(editForm.amount_str), category: cat }).eq("id", editForm.id);
     setExpenses((p) => p.map((e) => (e.id === editForm.id ? { ...e, date: editForm.date, recorder: editForm.recorder, card_id: editForm.card_id, item_name: editForm.item_name, amount: parseInt(editForm.amount_str), category: cat } : e)));
     setEditForm(null);
@@ -498,6 +670,32 @@ export default function Home() {
   };
 
   if (!loaded) return <div style={S.loading}><p>Loading...</p></div>;
+
+  /* ─ 쿠팡 와우카드 예상 적립 (국민 카드에만 표시, 기존 화면 스타일) ─ */
+  const WowBlock = ({ size = 11 }: { size?: number }) => {
+    const rows: [string, number, number | null][] = [
+      [t.wowCoupang, wow.coupang, wow.coupangCap],
+      [t.wowOther, wow.other, wow.promo ? 10000 : 2000],
+      ...(wow.promo ? ([[t.wowCvs, wow.cvs, 10000], [t.wowCafe, wow.cafe, 10000]] as [string, number, number][]) : []),
+    ];
+    return (
+      <div style={{ marginTop: 6, paddingTop: 6, borderTop: "1px dashed #e0e0e0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: size + 1, fontWeight: 700 }}>
+          <span>🪙 {t.wowCash}</span>
+          <span style={{ color: "#27ae60" }}>{fmt(wow.total)}</span>
+        </div>
+        <div style={{ fontSize: size - 1, color: "#999", marginBottom: 2 }}>{wow.promo ? t.wowPromo : t.wowBase}</div>
+        {rows.map(([label, v, cap]) => (
+          <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: size, color: "#666", padding: "1px 0" }}>
+            <span>{label}</span>
+            <span>{fmt(v)}{cap !== null && v >= cap ? ` · ${t.wowCapHit}` : ""}</span>
+          </div>
+        ))}
+        {wow.coupangRoom > 0 && <div style={{ fontSize: size, color: "#888", marginTop: 2 }}>{t.wowRoom} {fmt(wow.coupangRoom)}</div>}
+        <div style={{ fontSize: size - 2, color: "#aaa", marginTop: 3 }}>{t.wowNote}</div>
+      </div>
+    );
+  };
 
   /* ─ CardGauge ─ */
   const CardGauge = ({ card }: { card: (typeof CARDS)[0] }) => {
@@ -526,6 +724,7 @@ export default function Home() {
         )}
         {achieved.map((b, i) => <div key={i} style={S.bOk}>✅ {(b as any)[lang]}</div>)}
         {pending.map((b, i) => <div key={i} style={S.bWait}>⬜ {fmt(b.threshold - spent)} {t.moreFor} {(b as any)[lang]}</div>)}
+        {card.id === "kookmin" && <WowBlock />}
       </div>
     );
   };
@@ -696,11 +895,29 @@ export default function Home() {
               <div style={S.fRow}>
                 <label style={S.label}>{t.itemName}</label>
                 <input type="text" placeholder={t.itemPlaceholder} value={form.itemName}
-                  onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value }))} style={S.input} />
+                  onChange={(e) => setForm((f) => ({ ...f, itemName: e.target.value, catOverride: "" }))} style={S.input} />
                 {form.itemName && (() => {
-                  const cid = classify(form.itemName, rules);
-                  const cat = CATS.find((c) => c.id === cid);
-                  return <div style={S.autoCat}>→ {cat?.emoji} {(cat as any)?.[lang]}</div>;
+                  const ranked = rankCategories(form.itemName, rules, classModel);
+                  const cands = [...new Set([...ranked.map((r) => r.cat), "etc"])].slice(0, 3);
+                  const chosen = form.catOverride || ranked[0].cat;
+                  return (
+                    <div style={S.catChips}>
+                      {cands.map((cid) => {
+                        const cat = CATS.find((c) => c.id === cid);
+                        const on = cid === chosen;
+                        return (
+                          <button key={cid} onClick={() => setForm((f) => ({ ...f, catOverride: cid }))}
+                            style={{ ...S.catChip, ...(on ? S.catChipAct : {}) }}>
+                            {on ? "✓ " : ""}{cat?.emoji} {(cat as any)?.[lang]}
+                          </button>
+                        );
+                      })}
+                      <select value="" onChange={(e) => e.target.value && setForm((f) => ({ ...f, catOverride: e.target.value }))} style={S.catMore}>
+                        <option value="">{lang === "ko" ? "다른 분류…" : "其他分类…"}</option>
+                        {CATS.map((c) => <option key={c.id} value={c.id}>{c.emoji} {(c as any)[lang]}</option>)}
+                      </select>
+                    </div>
+                  );
                 })()}
               </div>
               <div style={S.fRow}>
@@ -832,7 +1049,8 @@ export default function Home() {
                   <div style={{ fontWeight: 700 }}>{c.icon} {(c.name as any)[lang]}: {fmt(sp)}</div>
                   {ach.map((b, i) => <div key={i} style={{ color: "#27ae60", fontSize: 13 }}>✅ {(b as any)[lang]}</div>)}
                   {miss.map((b, i) => <div key={i} style={{ color: "#e74c3c", fontSize: 13 }}>❌ {t.notAchieved}: {(b as any)[lang]} ({fmt(b.threshold - sp)} {t.short})</div>)}
-                  {ths.length === 0 && <div style={{ color: "#888", fontSize: 13 }}>{t.noLimit}</div>}
+                  {c.id === "kookmin" ? <WowBlock size={12} />
+                    : ths.length === 0 && <div style={{ color: "#888", fontSize: 13 }}>{t.noLimit}</div>}
                 </div>
               );
             })}
@@ -932,6 +1150,10 @@ const S: Record<string, React.CSSProperties> = {
   cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 },
   cardBtn: { display: "flex", alignItems: "center", gap: 5, padding: "9px", border: "2px solid #ddd", borderRadius: 9, background: "transparent", fontSize: 12, fontWeight: 600, cursor: "pointer" },
   autoCat: { marginTop: 3, fontSize: 11, color: "#667eea", fontWeight: 600 },
+  catChips: { display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 },
+  catChip: { padding: "5px 10px", border: "1.5px solid #ddd", borderRadius: 16, background: "#fff", fontSize: 12, fontWeight: 600, color: "#666", cursor: "pointer" },
+  catChipAct: { borderColor: "#667eea", background: "#667eea15", color: "#667eea" },
+  catMore: { padding: "5px 6px", border: "1.5px dashed #ddd", borderRadius: 16, background: "#fff", fontSize: 12, color: "#888", maxWidth: 110 },
   submitBtn: { width: "100%", padding: "12px", border: "none", borderRadius: 10, background: "linear-gradient(135deg,#667eea,#764ba2)", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", marginTop: 2 },
   hCount: { fontSize: 13, color: "#888", marginBottom: 10, fontWeight: 600 },
   histFilterRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, WebkitOverflowScrolling: "touch" as any },

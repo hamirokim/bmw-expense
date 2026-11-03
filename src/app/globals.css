@@ -11,3 +11,12 @@ body {
 input, select, button {
   font-family: inherit;
 }
+/* 아이폰 Safari: 날짜 값이 가운데로 몰리고 칸 높이가 달라지는 문제만 고침 (2026-11-03) */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  min-height: 38px;
+  text-align: left;
+}
+input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
