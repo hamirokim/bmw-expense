@@ -52,3 +52,9 @@
 - 로이 "배포해" (스레드 메시지) → `ui-gimgane-v5`를 main에 fast-forward(6aa2ca4) 후 `git push origin main`.
 - Vercel 상태 success, `https://bmw-expense.vercel.app` 200 응답, 새 CSS 토큰(`--dot-ring`) 서빙 확인.
 - 되돌리기: `git revert 6aa2ca4 && git push origin main` (데이터 영향 없음, 화면만 원래대로).
+
+## 9. 되돌림 (2026-11-03 09:35 KST)
+- 로이: "UI를 과거 버전으로 되돌려줘. 와이프가 싫대. 이미 과거 UI에 적응돼서."
+- `src/app/page.tsx`, `src/app/globals.css`를 `d1259de`(리디자인 전) 내용으로 되돌려 커밋·푸시. 작업일지(handoff/)는 남김.
+- 데이터·Supabase 영향 없음(화면 코드만).
+- 리디자인 화면 코드가 필요하면 커밋 `6aa2ca4`에 그대로 있음.

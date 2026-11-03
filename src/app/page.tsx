@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  Cell, BarChart, Bar, XAxis, YAxis,
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer,
 } from "recharts";
 
@@ -25,8 +25,6 @@ const LANG: Record<string, Record<string, any>> = {
     noLimit: "적립 한도 없음", shinhan: "신한", kookmin: "국민 쿠팡", hyundai: "현대 사업자",
     won: "원", man: "만", vsLastMonth: "지난달 대비", noLastMonth: "지난달 데이터 없음",
     edit: "수정", cancel: "취소", all: "전체",
-    monthSpent: "월 지출", mUnit: "월", sameAsPrev: "지난달과 같아요.",
-    diffLine: (m: string, more: boolean) => [`${m}월보다 `, more ? " 더 썼어요." : " 덜 썼어요."],
   },
   zh: {
     appName: "B.M.W", appSub: "爸爸妈妈 AND ME",
@@ -45,8 +43,6 @@ const LANG: Record<string, Record<string, any>> = {
     noLimit: "无积分上限", shinhan: "新韩", kookmin: "国民 Coupang", hyundai: "现代 商务卡",
     won: "韩元", man: "万", vsLastMonth: "对比上月", noLastMonth: "无上月数据",
     edit: "修改", cancel: "取消", all: "全部",
-    monthSpent: "月支出", mUnit: "月", sameAsPrev: "与上月持平。",
-    diffLine: (m: string, more: boolean) => [`比${m}月${more ? "多" : "少"}花了 `, ""],
   },
 };
 
@@ -319,65 +315,6 @@ function getAdvice(mExp: Expense[], lang: string) {
   return { cardTotals: t, advice: adv };
 }
 
-
-/* ═══ UI (김가네 v5 디자인 언어) ═══
-   색은 globals.css의 토큰(--tx1~3, --bg0~3, --warn/--bad/--good)만 쓴다. 색은 상태에만.
-   차트(SVG)는 CSS 변수를 못 받는 곳이 있어 TOK에서 hex로 꺼내 쓴다. */
-const TOK = {
-  dark: { tx1: "#F5F5F7", tx2: "#B9B9C0", tx3: "#8C8C94", bg1: "#151517", bg3: "#2C2C30", hair: "#2C2C30" },
-  light: { tx1: "#1C1C1E", tx2: "#4A4A50", tx3: "#6E6E76", bg1: "#FFFFFF", bg3: "#E5E5EA", hair: "#D1D1D6" },
-};
-const num = (n: number) => n.toLocaleString("ko-KR");
-const signed = (n: number) => (n > 0 ? "+" : n < 0 ? "−" : "") + fmt(Math.abs(n));
-
-function useDarkMode() {
-  const [dark, setDark] = useState(true);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => setDark(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-  return dark;
-}
-
-/* 접힘 줄: 제목 + (접혔을 때) 요약 한 줄 + 둥근 ⌄. 위쪽 얇은 선으로만 나눈다. */
-function Fold({ title, badge, badgeColor, summary, isOpen, onToggle, children }: {
-  title: string; badge?: string | number; badgeColor?: string; summary?: React.ReactNode;
-  isOpen: boolean; onToggle: () => void; children?: React.ReactNode;
-}) {
-  const canOpen = !!children;
-  return (
-    <div style={S.fold}>
-      <button onClick={canOpen ? onToggle : undefined} style={{ ...S.foldBtn, cursor: canOpen ? "pointer" : "default" }} aria-expanded={canOpen ? isOpen : undefined}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={S.foldTitle}>
-            {title}
-            {badge !== undefined && <span style={{ color: badgeColor || "var(--tx3)", marginLeft: 6 }}>{badge}</span>}
-          </div>
-          {(!isOpen || !canOpen) && summary && <div style={S.foldSum}>{summary}</div>}
-        </div>
-        {canOpen && <span style={{ ...S.chev, transform: isOpen ? "rotate(180deg)" : "none" }}>{ICONS.chev}</span>}
-      </button>
-      {canOpen && isOpen && <div style={S.foldBody}>{children}</div>}
-    </div>
-  );
-}
-
-const svg = (d: React.ReactNode, size = 24) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">{d}</svg>
-);
-const ICONS = {
-  dashboard: svg(<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z" />),
-  input: svg(<><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="M13 7l4 4" /></>),
-  history: svg(<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" /></>),
-  report: svg(<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>),
-  chev: svg(<path d="m6 9 6 6 6-6" />, 14),
-  edit: svg(<><path d="M4 20h4L19 9l-4-4L4 16z" /></>, 14),
-  close: svg(<path d="M6 6l12 12M18 6 6 18" />, 14),
-};
-
 /* ═══ MAIN ═══ */
 export default function Home() {
   const [lang, setLang] = useState("ko");
@@ -394,8 +331,6 @@ export default function Home() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [editForm, setEditForm] = useState<(Expense & { amount_str: string }) | null>(null);
   const [histFilter, setHistFilter] = useState("all"); // 내역 탭 카드별 필터 ("all" | card_id | "cash")
-  const [open, setOpen] = useState<Record<string, boolean>>({}); // 접힘 줄 펼침 상태 (화면 표시 전용)
-  const isDark = useDarkMode();
 
   /* ─ Follow the device's local date, including midnight and timezone changes ─ */
   useEffect(() => {
@@ -564,13 +499,6 @@ export default function Home() {
 
   if (!loaded) return <div style={S.loading}><p>Loading...</p></div>;
 
-  const tok = isDark ? TOK.dark : TOK.light;
-  const toggle = (id: string, def = false) => setOpen((o) => ({ ...o, [id]: !(o[id] ?? def) }));
-  const isOpen = (id: string, def = false) => open[id] ?? def;
-  const shortName = (c: { name: Record<string, string> }) => c.name[lang].split(" ")[0];
-  const mLabel = (mk: string) => `${Number(mk.substring(5))}${t.mUnit}`;
-  const Dot = ({ color }: { color: string }) => <span style={{ ...S.dot, background: color }} />;
-
   /* ─ CardGauge ─ */
   const CardGauge = ({ card }: { card: (typeof CARDS)[0] }) => {
     const spent = cardTotals[card.id] || 0;
@@ -579,62 +507,63 @@ export default function Home() {
     const pct = ths.length > 0 ? Math.min((spent / maxT) * 100, 100) : 100;
     const achieved = card.benefits.filter((b) => b.threshold > 0 && spent >= b.threshold);
     const pending = card.benefits.filter((b) => b.threshold > 0 && spent < b.threshold);
-    const allDone = ths.length > 0 && pending.length === 0;
     return (
-      <div style={S.cardGauge}>
+      <div style={{ ...S.cardGauge, borderLeft: `4px solid ${card.color}` }}>
         <div style={S.cardHead}>
-          <Dot color={card.color} />
+          <span style={{ fontSize: 18 }}>{card.icon}</span>
           <span style={S.cardNm}>{(card.name as any)[lang]}</span>
           <span style={S.cardAmt}>{fmt(spent)}</span>
         </div>
         {ths.length > 0 && (
           <div style={S.gaugeTrack}>
-            <div style={{ ...S.gaugeFill, width: `${pct}%`, background: allDone ? "var(--good)" : "var(--tx2)" }} />
+            <div style={{ ...S.gaugeFill, width: `${pct}%`, backgroundColor: card.color }} />
             {ths.map((th, i) => (
               <div key={i} style={{ ...S.gaugeMark, left: `${(th / maxT) * 100}%` }}>
-                <span style={{ ...S.gaugeLabel, ...(th === maxT ? { left: "auto", right: 0, transform: "none" } : {}) }}>{th / 10000}{t.man}</span>
+                <span style={S.gaugeLabel}>{th / 10000}{t.man}</span>
               </div>
             ))}
           </div>
         )}
-        {achieved.map((b, i) => <div key={i} style={S.bOk}>✓ {(b as any)[lang]}</div>)}
-        {pending.map((b, i) => <div key={i} style={S.bWait}>○ {fmt(b.threshold - spent)} {t.moreFor} {(b as any)[lang]}</div>)}
+        {achieved.map((b, i) => <div key={i} style={S.bOk}>✅ {(b as any)[lang]}</div>)}
+        {pending.map((b, i) => <div key={i} style={S.bWait}>⬜ {fmt(b.threshold - spent)} {t.moreFor} {(b as any)[lang]}</div>)}
       </div>
     );
   };
 
   const tabItems = [
-    { id: "dashboard", label: t.tabs.dashboard, icon: ICONS.dashboard },
-    { id: "input", label: t.tabs.input, icon: ICONS.input },
-    { id: "history", label: t.tabs.history, icon: ICONS.history },
-    { id: "report", label: t.tabs.report, icon: ICONS.report },
+    { id: "dashboard", label: t.tabs.dashboard, icon: "📊" },
+    { id: "input", label: t.tabs.input, icon: "✏️" },
+    { id: "history", label: t.tabs.history, icon: "📋" },
+    { id: "report", label: t.tabs.report, icon: "📈" },
   ];
-
-  const hasUrgent = advice.some((a) => a.urgent);
-  const firstPending = CARDS.map((c, i) => {
-    const sp = cardTotals[c.id] || 0;
-    const nextT = [...new Set(c.benefits.filter((b) => b.threshold > 0).map((b) => b.threshold))].find((th) => sp < th);
-    return nextT ? `${i + 1}. ${shortName(c)} · ${t.remaining} ${fmt(nextT - sp)}` : null;
-  }).find(Boolean);
 
   return (
     <div style={S.app}>
-      {/* Top */}
-      <div style={S.top}>
+      {/* Header */}
+      <div style={S.header}>
         <div>
-          <div style={S.brand}>{t.appName}</div>
-          <div style={S.brandSub}>{t.appSub}</div>
+          <h1 style={S.title}>{t.appName}</h1>
+          <div style={S.subtitle}>{t.appSub}</div>
         </div>
-        <div style={S.topRight}>
-          <button onClick={() => setLang((l) => (l === "ko" ? "zh" : "ko"))} style={S.chip}>
+        <div style={S.headerRight}>
+          <button onClick={() => setLang((l) => (l === "ko" ? "zh" : "ko"))} style={S.langBtn}>
             {lang === "ko" ? "中文" : "한국어"}
           </button>
-          <div style={S.monthWrap}>
-            <select value={selMonth} onChange={(e) => setSelMonth(e.target.value)} style={S.monthSel}>
-              {months.map((m) => <option key={m} value={m}>{m.replace("-", ".")}</option>)}
-            </select>
-            <span style={S.monthCaret}>{ICONS.chev}</span>
-          </div>
+          <select value={selMonth} onChange={(e) => setSelMonth(e.target.value)} style={S.monthPicker}>
+            {months.map((m) => <option key={m} value={m}>{m.replace("-", ".")}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={S.tabWrap}>
+        <div style={S.tabBar}>
+          {tabItems.map((ti) => (
+            <button key={ti.id} onClick={() => setTab(ti.id)} style={{ ...S.tabBtn, ...(tab === ti.id ? S.tabAct : {}) }}>
+              <span style={{ fontSize: 16 }}>{ti.icon}</span>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{ti.label}</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -642,129 +571,111 @@ export default function Home() {
         {/* ━━━ DASHBOARD ━━━ */}
         {tab === "dashboard" && (
           <>
-            <div style={S.hk}>{mLabel(selMonth)} {t.monthSpent.replace(/^月|^월\s?/, "")}</div>
-            <div style={S.bigRow}>
-              <span style={S.big}>{num(total)}</span>
-              <span style={S.bigUnit}>{t.won}</span>
-            </div>
-            <div style={S.sayLine}>
-              {prevExp.length === 0 ? <span style={{ color: "var(--tx3)" }}>{t.noLastMonth}</span>
-                : monthDiff === 0 ? t.sameAsPrev
-                : (() => {
-                  const [pre, post] = t.diffLine(mLabel(prevMK).replace(/[월月]$/, ""), monthDiff > 0);
-                  return <>{pre}<span style={{ color: monthDiff > 0 ? "var(--bad)" : "var(--good)" }}>{fmt(Math.abs(monthDiff))}</span>{post}</>;
-                })()}
-            </div>
-            <div style={S.sayMeta}>
-              {mExp.length}{t.count}
-              {monthDiffPct && <> · {t.vsLastMonth} {monthDiff > 0 ? "+" : monthDiff < 0 ? "−" : ""}{Math.abs(Number(monthDiffPct))}%</>}
+            <div style={S.sumRow}>
+              <div style={{ ...S.sumCard, background: "linear-gradient(135deg,#667eea,#764ba2)" }}>
+                <div style={S.sumLabel}>{t.totalSpent}</div>
+                <div style={S.sumVal}>{fmt(total)}</div>
+              </div>
+              <div style={{ ...S.sumCard, background: "linear-gradient(135deg,#f093fb,#f5576c)" }}>
+                <div style={S.sumLabel}>{t.bizSettle}</div>
+                <div style={S.sumVal}>{fmt(bizSettle)}</div>
+                <div style={S.sumNote}>{t.bizSettleNote}</div>
+              </div>
             </div>
 
-            <div style={{ height: 26 }} />
-
-            {advice.length > 0 && (
-              <Fold title={t.cardGuide} badge={advice.length} badgeColor={hasUrgent ? "var(--warn)" : undefined}
-                summary={advice[0].msg} isOpen={isOpen("guide", hasUrgent)} onToggle={() => toggle("guide", hasUrgent)}>
-                {advice.map((a, i) => (
-                  <div key={i} style={S.lineItem}>
-                    <Dot color={a.urgent ? "var(--warn)" : "var(--tx3)"} />
-                    <span style={{ color: a.urgent ? "var(--tx1)" : "var(--tx2)", fontWeight: a.urgent ? 600 : 400 }}>{a.msg}</span>
-                  </div>
-                ))}
-              </Fold>
-            )}
-
-            <Fold title={t.bizSettle} badge={fmt(bizSettle)} badgeColor="var(--tx1)" summary={t.bizSettleNote}
-              isOpen={isOpen("settle")} onToggle={() => toggle("settle")}>
-              {settleCardIds.map((cid) => {
-                const card = CARDS.find((c) => c.id === cid)!;
-                const amt = mExp.filter((e) => e.card_id === cid).reduce((s, e) => s + e.amount, 0);
-                return (
-                  <div key={cid} style={S.kvRow}>
-                    <span style={S.kvKey}><Dot color={card.color} />{shortName(card)}</span>
-                    <span style={S.kvVal}>{fmt(amt)}</span>
-                  </div>
-                );
-              })}
-              <div style={S.note}>{t.bizSettleNote}</div>
-            </Fold>
-
-            <Fold title={t.vsLastMonth}
-              summary={prevExp.length > 0 ? `${mLabel(prevMK)} ${fmt(prevTotal)} → ${fmt(total)}` : t.noLastMonth}
-              isOpen={isOpen("compare")} onToggle={() => toggle("compare")}>
-              {prevExp.length > 0 ? (
-                <>
-                  <div style={S.kvRow}><span style={S.kvKey}>{mLabel(prevMK)}</span><span style={{ ...S.kvVal, color: "var(--tx2)" }}>{fmt(prevTotal)}</span></div>
-                  <div style={S.kvRow}><span style={S.kvKey}>{mLabel(selMonth)}</span><span style={S.kvVal}>{fmt(total)}</span></div>
-                  <div style={{ height: 6 }} />
+            {/* Month comparison */}
+            {prevExp.length > 0 ? (
+              <div style={S.compareBox}>
+                <div style={S.compareTitle}>📊 {t.vsLastMonth}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                  <span style={{ fontSize: 13, color: "#888" }}>{prevMK.replace("-", ".")}</span>
+                  <span style={{ fontSize: 13, color: "#888" }}>{fmt(prevTotal)}</span>
+                  <span style={{ fontSize: 16 }}>→</span>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{fmt(total)}</span>
+                </div>
+                <div style={{ textAlign: "center", marginTop: 6 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: monthDiff > 0 ? "#e74c3c" : "#27ae60" }}>
+                    {monthDiff > 0 ? "▲" : "▼"} {fmt(Math.abs(monthDiff))}
+                  </span>
+                  {monthDiffPct && <span style={{ fontSize: 12, color: "#888", marginLeft: 6 }}>({monthDiff > 0 ? "+" : ""}{monthDiffPct}%)</span>}
+                </div>
+                <div style={{ marginTop: 10 }}>
                   {catTotals.slice(0, 4).map((c) => {
-                    const diff = c.total - (prevCatMap[c.id] || 0);
+                    const prev = prevCatMap[c.id] || 0;
+                    const diff = c.total - prev;
                     if (diff === 0) return null;
                     return (
-                      <div key={c.id} style={S.kvRow}>
-                        <span style={S.kvKey}>{c.emoji} {c.name}</span>
-                        <span style={{ ...S.kvVal, color: diff > 0 ? "var(--bad)" : "var(--good)" }}>{signed(diff)}</span>
+                      <div key={c.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 11, padding: "2px 0" }}>
+                        <span>{c.emoji} {c.name}</span>
+                        <span style={{ color: diff > 0 ? "#e74c3c" : "#27ae60", fontWeight: 600 }}>{diff > 0 ? "+" : ""}{fmt(diff)}</span>
                       </div>
                     );
                   })}
-                </>
-              ) : null}
-            </Fold>
+                </div>
+              </div>
+            ) : (
+              <div style={{ ...S.compareBox, textAlign: "center" as const, color: "#aaa", fontSize: 12 }}>📊 {t.noLastMonth}</div>
+            )}
 
-            <Fold title={t.cardPerf}
-              summary={CARDS.map((c) => `${shortName(c)} ${fmt(cardTotals[c.id] || 0)}`).join(" · ")}
-              isOpen={isOpen("cards")} onToggle={() => toggle("cards")}>
-              {CARDS.map((c) => <CardGauge key={c.id} card={c} />)}
-            </Fold>
+            {advice.length > 0 && (
+              <div style={S.advBox}>
+                <div style={S.advTitle}>💡 {t.cardGuide}</div>
+                {advice.map((a, i) => (
+                  <div key={i} style={{ ...S.advItem, fontWeight: a.urgent ? 700 : 400 }}>{a.urgent ? "🔴" : "🔵"} {a.msg}</div>
+                ))}
+              </div>
+            )}
+
+            <div style={S.secTitle}>{t.cardPerf}</div>
+            {CARDS.map((c) => <CardGauge key={c.id} card={c} />)}
 
             {catTotals.length > 0 && (
-              <Fold title={t.catTop} summary={catTotals.slice(0, 3).map((c) => `${c.emoji} ${c.name}`).join(" · ")}
-                isOpen={isOpen("cats")} onToggle={() => toggle("cats")}>
+              <>
+                <div style={S.secTitle}>{t.catTop}</div>
                 {catTotals.slice(0, 5).map((c) => (
-                  <div key={c.id} style={S.kvRow}>
-                    <span style={S.kvKey}>{c.emoji} {c.name}</span>
-                    <span style={S.kvVal}>{fmt(c.total)}</span>
+                  <div key={c.id} style={S.catRow}>
+                    <span>{c.emoji} {c.name}</span>
+                    <span style={{ fontWeight: 700 }}>{fmt(c.total)}</span>
                   </div>
                 ))}
-              </Fold>
+              </>
             )}
-            <div style={S.foldEnd} />
           </>
         )}
 
         {/* ━━━ INPUT ━━━ */}
         {tab === "input" && (
           <>
-            <Fold title={t.priority} summary={firstPending || t.achieved}
-              isOpen={isOpen("prio")} onToggle={() => toggle("prio")}>
+            <div style={S.prGuide}>
+              <div style={S.prTitle}>🎯 {t.priority}</div>
               {CARDS.map((c, i) => {
                 const sp = cardTotals[c.id] || 0;
                 const ths = [...new Set(c.benefits.filter((b) => b.threshold > 0).map((b) => b.threshold))];
                 const nextT = ths.find((th) => sp < th);
                 const done = ths.length > 0 && ths.every((th) => sp >= th);
                 return (
-                  <div key={c.id} style={S.kvRow}>
-                    <span style={S.kvKey}><span style={S.prNum}>{i + 1}</span><Dot color={c.color} />{(c.name as any)[lang]}</span>
-                    {done ? <span style={{ ...S.kvVal, color: "var(--good)" }}>✓ {t.achieved}</span>
-                      : nextT ? <span style={{ ...S.kvVal, color: "var(--warn)" }}>{t.remaining} {fmt(nextT - sp)}</span>
-                      : <span style={{ ...S.kvVal, color: "var(--tx3)", fontWeight: 400 }}>{t.noReq}</span>}
+                  <div key={c.id} style={{ ...S.prItem, opacity: done ? 0.5 : 1 }}>
+                    <span style={S.prNum}>{i + 1}</span>
+                    <span>{c.icon} {(c.name as any)[lang]}</span>
+                    {done ? <span style={S.prDone}>✅ {t.achieved}</span>
+                      : nextT ? <span style={S.prLeft}>{t.remaining} {fmt(nextT - sp)}</span>
+                      : <span style={S.prFree}>{t.noReq}</span>}
                   </div>
                 );
               })}
-            </Fold>
-            <div style={S.foldEnd} />
+            </div>
 
-            <div style={{ marginTop: 22 }}>
+            <div style={S.formBox}>
               <div style={S.fRow}>
                 <label style={S.label}>{t.date}</label>
                 <input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} style={S.input} />
               </div>
               <div style={S.fRow}>
                 <label style={S.label}>{t.recorder}</label>
-                <div style={S.seg}>
+                <div style={{ display: "flex", gap: 8 }}>
                   {[{ key: "머슴", label: "머슴 👨‍🌾", zh: "长工 👨‍🌾" }, { key: "공주", label: "공주 👸", zh: "公主 👸" }].map((r) => (
                     <button key={r.key} onClick={() => setForm((f) => ({ ...f, recorder: r.key }))}
-                      style={{ ...S.segBtn, ...(form.recorder === r.key ? S.segAct : {}) }}>
+                      style={{ ...S.togBtn, ...(form.recorder === r.key ? S.togAct : {}) }}>
                       {lang === "ko" ? r.label : r.zh}
                     </button>
                   ))}
@@ -775,9 +686,9 @@ export default function Home() {
                 <div style={S.cardGrid}>
                   {PAYMENTS.map((c) => (
                     <button key={c.id} onClick={() => setForm((f) => ({ ...f, cardId: c.id }))}
-                      style={{ ...S.cardBtn, ...(form.cardId === c.id ? S.cardBtnAct : {}) }}>
-                      <Dot color={c.color} />
-                      <span>{(c.name as any)[lang].split(" ")[0]}</span>
+                      style={{ ...S.cardBtn, ...(form.cardId === c.id ? { borderColor: c.color, background: `${c.color}15` } : {}) }}>
+                      <span style={{ fontSize: 15 }}>{c.icon}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600 }}>{(c.name as any)[lang].split(" ")[0]}</span>
                     </button>
                   ))}
                 </div>
@@ -794,13 +705,11 @@ export default function Home() {
               </div>
               <div style={S.fRow}>
                 <label style={S.label}>{t.amount} ({t.amountUnit})</label>
-                <input type="number" inputMode="numeric" placeholder={t.amountUnit} value={form.amount}
+                <input type="number" placeholder={t.amountUnit} value={form.amount}
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()} style={{ ...S.input, fontSize: 20, fontWeight: 700 }} />
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()} style={S.input} />
               </div>
-              <button onClick={handleSubmit} style={{ ...S.submitBtn, ...(showSuccess ? { background: "var(--good)" } : {}) }}>
-                {showSuccess ? t.saved : t.save}
-              </button>
+              <button onClick={handleSubmit} style={S.submitBtn}>{showSuccess ? t.saved : `💾 ${t.save}`}</button>
             </div>
           </>
         )}
@@ -815,41 +724,37 @@ export default function Home() {
               </button>
               {PAYMENTS.map((c) => (
                 <button key={c.id} onClick={() => setHistFilter(c.id)}
-                  style={{ ...S.histChip, ...(histFilter === c.id ? S.histChipAct : {}) }}>
-                  <Dot color={c.color} />{(c.name as any)[lang].split(" ")[0]}
+                  style={{ ...S.histChip, ...(histFilter === c.id ? { borderColor: c.color, background: `${c.color}15`, color: c.color } : {}) }}>
+                  {c.icon} {(c.name as any)[lang].split(" ")[0]}
                 </button>
               ))}
             </div>
-            <div style={S.hk}>{histExp.length}{t.count}</div>
-            <div style={{ ...S.bigRow, marginBottom: 18 }}>
-              <span style={{ ...S.big, fontSize: 40 }}>{num(histTotal)}</span>
-              <span style={{ ...S.bigUnit, fontSize: 16 }}>{t.won}</span>
-            </div>
+            <div style={S.hCount}>{histExp.length}{t.count} · {fmt(histTotal)}</div>
             {histExp.length === 0 && <div style={S.empty}>{t.noData}</div>}
 
             {editForm && (
               <div style={S.editOverlay}>
                 <div style={S.editModal}>
-                  <div style={S.sheetTitle}>{t.edit}</div>
-                  <div style={S.fRow}><input type="date" value={editForm.date} onChange={(e) => setEditForm((f) => f && ({ ...f, date: e.target.value }))} style={S.inputAlt} /></div>
-                  <div style={{ ...S.seg, marginBottom: 12, background: "var(--field)" }}>
+                  <h3 style={{ margin: "0 0 12px", fontSize: 16 }}>✏️ {t.edit}</h3>
+                  <div style={S.fRow}><input type="date" value={editForm.date} onChange={(e) => setEditForm((f) => f && ({ ...f, date: e.target.value }))} style={S.input} /></div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
                     {["머슴", "공주"].map((r) => (
                       <button key={r} onClick={() => setEditForm((f) => f && ({ ...f, recorder: r }))}
-                        style={{ ...S.segBtn, ...(editForm.recorder === r ? S.segAct : {}) }}>{r}</button>
+                        style={{ ...S.togBtn, flex: 1, ...(editForm.recorder === r ? S.togAct : {}) }}>{r}</button>
                     ))}
                   </div>
-                  <div style={{ ...S.cardGrid, marginBottom: 12 }}>
+                  <div style={{ ...S.cardGrid, marginBottom: 10 }}>
                     {PAYMENTS.map((c) => (
                       <button key={c.id} onClick={() => setEditForm((f) => f && ({ ...f, card_id: c.id }))}
-                        style={{ ...S.cardBtn, background: "var(--field)", ...(editForm.card_id === c.id ? S.cardBtnAct : {}) }}>
-                        <Dot color={c.color} /><span>{(c.name as any)[lang].split(" ")[0]}</span>
+                        style={{ ...S.cardBtn, ...(editForm.card_id === c.id ? { borderColor: c.color, background: `${c.color}15` } : {}) }}>
+                        <span>{c.icon}</span><span style={{ fontSize: 11 }}>{(c.name as any)[lang].split(" ")[0]}</span>
                       </button>
                     ))}
                   </div>
-                  <input type="text" value={editForm.item_name} onChange={(e) => setEditForm((f) => f && ({ ...f, item_name: e.target.value }))} style={{ ...S.inputAlt, marginBottom: 10 }} />
-                  <input type="number" inputMode="numeric" value={editForm.amount_str} onChange={(e) => setEditForm((f) => f && ({ ...f, amount_str: e.target.value }))} style={{ ...S.inputAlt, marginBottom: 16 }} />
+                  <input type="text" value={editForm.item_name} onChange={(e) => setEditForm((f) => f && ({ ...f, item_name: e.target.value }))} style={{ ...S.input, marginBottom: 8 }} />
+                  <input type="number" value={editForm.amount_str} onChange={(e) => setEditForm((f) => f && ({ ...f, amount_str: e.target.value }))} style={{ ...S.input, marginBottom: 12 }} />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => setEditForm(null)} style={{ ...S.submitBtn, background: "var(--bg3)", color: "var(--tx1)", flex: 1 }}>{t.cancel}</button>
+                    <button onClick={() => setEditForm(null)} style={{ ...S.submitBtn, background: "#aaa", flex: 1 }}>{t.cancel}</button>
                     <button onClick={handleEditSave} style={{ ...S.submitBtn, flex: 1 }}>{t.save}</button>
                   </div>
                 </div>
@@ -861,26 +766,28 @@ export default function Home() {
               const cat = CATS.find((c) => c.id === e.category) || CATS.at(-1)!;
               return (
                 <div key={e.id} style={S.hItem}>
-                  <div style={S.hMain}>
-                    <div style={S.hName}>{e.item_name}</div>
-                    <div style={S.hAmt}>{fmt(e.amount)}</div>
+                  <div style={S.hTop}>
+                    <span style={S.hDate}>{e.date.substring(5)} · {e.recorder === "머슴" ? "머슴👨‍🌾" : "공주👸"}</span>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => handleEditStart(e)} style={S.editBtn}>✎</button>
+                      <button onClick={() => e.id && handleDelete(e.id)} style={S.delBtn}>✕</button>
+                    </div>
                   </div>
-                  <div style={S.hMeta}>
-                    <span>{e.date.substring(5).replace("-", ".")}</span>
-                    <span>·</span>
-                    <span>{e.recorder === "머슴" ? "머슴👨‍🌾" : "공주👸"}</span>
-                    <span>·</span>
-                    <span style={{ display: "inline-flex", alignItems: "center" }}>{card && <Dot color={card.color} />}{(card?.name as any)?.[lang]?.split(" ")[0]}</span>
-                    {editingCatId === e.id ? (
-                      <select defaultValue={e.category} onChange={(ev) => e.id && handleCatEdit(e.id, ev.target.value)} style={S.catSel}>
-                        {CATS.map((c) => <option key={c.id} value={c.id}>{c.emoji} {(c as any)[lang]}</option>)}
-                      </select>
-                    ) : (
-                      <span onClick={() => setEditingCatId(e.id!)} style={S.catBadge}>{cat.emoji} {(cat as any)[lang]}</span>
-                    )}
-                    <span style={{ flex: 1 }} />
-                    <button onClick={() => handleEditStart(e)} style={S.iconBtn} aria-label={t.edit}>{ICONS.edit}</button>
-                    <button onClick={() => e.id && handleDelete(e.id)} style={S.iconBtn} aria-label="delete">{ICONS.close}</button>
+                  <div style={S.hMain}>
+                    <div>
+                      <div style={S.hName}>{e.item_name}</div>
+                      <div style={S.hMeta}>
+                        <span style={{ color: card?.color }}>{card?.icon} {(card?.name as any)?.[lang]?.split(" ")[0]}</span>
+                        {editingCatId === e.id ? (
+                          <select defaultValue={e.category} onChange={(ev) => e.id && handleCatEdit(e.id, ev.target.value)} style={S.catSel}>
+                            {CATS.map((c) => <option key={c.id} value={c.id}>{c.emoji} {(c as any)[lang]}</option>)}
+                          </select>
+                        ) : (
+                          <span onClick={() => setEditingCatId(e.id!)} style={S.catBadge}>{cat.emoji} {(cat as any)[lang]} ✎</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={S.hAmt}>{fmt(e.amount)}</div>
                   </div>
                 </div>
               );
@@ -891,72 +798,76 @@ export default function Home() {
         {/* ━━━ REPORT ━━━ */}
         {tab === "report" && (
           <>
-            <div style={S.hk}>{mLabel(selMonth)} {t.reportTotal}</div>
-            <div style={S.bigRow}>
-              <span style={S.big}>{num(total)}</span>
-              <span style={S.bigUnit}>{t.won}</span>
+            <div style={S.rptTotal}>
+              <div style={{ fontSize: 13, color: "#888" }}>{t.reportTotal}</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{fmt(total)}</div>
             </div>
 
-            <div style={S.cap}>{t.bizAccount}</div>
-            <div style={S.kvRow}>
-              <span style={{ ...S.kvKey, fontWeight: 600, color: "var(--tx1)" }}>{t.bizSettle}</span>
-              <span style={{ ...S.kvVal, fontSize: 20 }}>{fmt(bizSettle)}</span>
+            <div style={S.settleBox}>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>🏦 {t.bizAccount}</div>
+              <div style={S.settleAmt}>{fmt(bizSettle)}</div>
+              <div style={{ fontSize: 12, color: "#666" }}>
+                {settleCardIds.map((cid, i) => {
+                  const card = CARDS.find((c) => c.id === cid)!;
+                  const amt = mExp.filter((e) => e.card_id === cid).reduce((s, e) => s + e.amount, 0);
+                  const label = (card.name as any)[lang].split(" ")[0];
+                  return (
+                    <span key={cid}>
+                      {i > 0 && " + "}
+                      {label}: {fmt(amt)}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-            {settleCardIds.map((cid) => {
-              const card = CARDS.find((c) => c.id === cid)!;
-              const amt = mExp.filter((e) => e.card_id === cid).reduce((s, e) => s + e.amount, 0);
-              return (
-                <div key={cid} style={S.kvRow}>
-                  <span style={S.kvKey}><Dot color={card.color} />{shortName(card)}</span>
-                  <span style={{ ...S.kvVal, color: "var(--tx2)", fontWeight: 500 }}>{fmt(amt)}</span>
-                </div>
-              );
-            })}
 
-            <div style={S.cap}>{t.benefitSummary}</div>
+            <div style={S.secTitle}>{t.benefitSummary}</div>
             {CARDS.map((c) => {
               const sp = cardTotals[c.id] || 0;
               const ach = c.benefits.filter((b) => b.threshold > 0 && sp >= b.threshold);
               const miss = c.benefits.filter((b) => b.threshold > 0 && sp < b.threshold);
               const ths = [...new Set(c.benefits.filter((b) => b.threshold > 0).map((b) => b.threshold))];
               return (
-                <div key={c.id} style={S.rptCard}>
-                  <div style={S.kvRow}>
-                    <span style={{ ...S.kvKey, color: "var(--tx1)", fontWeight: 600 }}><Dot color={c.color} />{(c.name as any)[lang]}</span>
-                    <span style={S.kvVal}>{fmt(sp)}</span>
-                  </div>
-                  {ach.map((b, i) => <div key={i} style={{ ...S.bOk, fontSize: 13 }}>✓ {(b as any)[lang]}</div>)}
-                  {miss.map((b, i) => <div key={i} style={{ ...S.bWait, fontSize: 13 }}>○ {t.notAchieved} · {(b as any)[lang]} ({fmt(b.threshold - sp)} {t.short})</div>)}
-                  {ths.length === 0 && <div style={{ ...S.bWait, fontSize: 13 }}>{t.noLimit}</div>}
+                <div key={c.id} style={{ ...S.rptCard, borderLeft: `3px solid ${c.color}` }}>
+                  <div style={{ fontWeight: 700 }}>{c.icon} {(c.name as any)[lang]}: {fmt(sp)}</div>
+                  {ach.map((b, i) => <div key={i} style={{ color: "#27ae60", fontSize: 13 }}>✅ {(b as any)[lang]}</div>)}
+                  {miss.map((b, i) => <div key={i} style={{ color: "#e74c3c", fontSize: 13 }}>❌ {t.notAchieved}: {(b as any)[lang]} ({fmt(b.threshold - sp)} {t.short})</div>)}
+                  {ths.length === 0 && <div style={{ color: "#888", fontSize: 13 }}>{t.noLimit}</div>}
                 </div>
               );
             })}
 
             {catTotals.length > 0 && (
               <>
-                <div style={S.cap}>{t.catBreakdown}</div>
+                <div style={S.secTitle}>{t.catBreakdown}</div>
+                <div style={{ width: "100%", height: 280 }}>
+                  <ResponsiveContainer>
+                    <PieChart>
+                      <Pie data={catTotals} dataKey="total" nameKey="name" cx="50%" cy="50%" outerRadius={95} innerRadius={48} paddingAngle={2}
+                        label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {catTotals.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v: any) => fmt(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
                 {catTotals.map((c) => (
-                  <div key={c.id} style={{ padding: "8px 0" }}>
-                    <div style={S.kvRowTight}>
-                      <span style={S.kvKey}>{c.emoji} {c.name}</span>
-                      <span style={S.kvVal}>{fmt(c.total)} <span style={{ color: "var(--tx3)", fontWeight: 500, fontSize: 12.5 }}>{total > 0 ? ((c.total / total) * 100).toFixed(1) : 0}%</span></span>
-                    </div>
-                    <div style={S.barTrack}><div style={{ ...S.barFill, width: `${(c.total / catTotals[0].total) * 100}%` }} /></div>
+                  <div key={c.id} style={S.catRow}>
+                    <span>{c.emoji} {c.name}</span>
+                    <span style={{ fontWeight: 700 }}>{fmt(c.total)} ({total > 0 ? ((c.total / total) * 100).toFixed(1) : 0}%)</span>
                   </div>
                 ))}
               </>
             )}
 
-            <div style={S.cap}>{t.cardUsage}</div>
+            <div style={S.secTitle}>{t.cardUsage}</div>
             <div style={{ width: "100%", height: 220 }}>
               <ResponsiveContainer>
                 <BarChart data={PAYMENTS.map((c) => ({ name: (c.name as any)[lang].split(" ")[0], amount: cardTotals[c.id] || 0 }))}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: tok.tx3 }} axisLine={{ stroke: tok.hair }} tickLine={false} />
-                  <YAxis tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t.man}`} tick={{ fontSize: 11, fill: tok.tx3 }} axisLine={false} tickLine={false} width={44} />
-                  <Tooltip formatter={(v: any) => fmt(v)} cursor={{ fill: tok.bg3, opacity: 0.4 }}
-                    contentStyle={{ background: tok.bg1, border: `1px solid ${tok.hair}`, borderRadius: 12, color: tok.tx1 }}
-                    labelStyle={{ color: tok.tx2 }} itemStyle={{ color: tok.tx1 }} />
-                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={(v: number) => `${(v / 10000).toFixed(0)}${t.man}`} tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: any) => fmt(v)} />
+                  <Bar dataKey="amount" radius={[6, 6, 0, 0]}>
                     {PAYMENTS.map((c, i) => <Cell key={i} fill={c.color} />)}
                   </Bar>
                 </BarChart>
@@ -965,106 +876,84 @@ export default function Home() {
           </>
         )}
       </div>
-
-      {/* Bottom tab bar */}
-      <nav style={S.tabBar}>
-        {tabItems.map((ti) => (
-          <button key={ti.id} onClick={() => setTab(ti.id)} style={{ ...S.tabBtn, color: tab === ti.id ? "var(--tx1)" : "var(--tx3)" }}
-            aria-current={tab === ti.id ? "page" : undefined}>
-            {ti.icon}
-            <span style={{ fontSize: 11, fontWeight: 600 }}>{ti.label}</span>
-          </button>
-        ))}
-      </nav>
     </div>
   );
 }
 
-/* ═══ Styles ═══
-   김가네 v5 토큰(globals.css). 숫자는 tabular, 큰 숫자 하나, 나머지는 접힘 줄. */
+/* ═══ Styles ═══ */
 const S: Record<string, React.CSSProperties> = {
-  app: { maxWidth: 480, margin: "0 auto", background: "var(--bg0)", minHeight: "100vh", color: "var(--tx1)" },
-  top: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "calc(14px + env(safe-area-inset-top)) 20px 6px" },
-  brand: { fontSize: 17, fontWeight: 800, letterSpacing: 0.5, color: "var(--tx1)" },
-  brandSub: { fontSize: 12, color: "var(--tx3)", marginTop: 2 },
-  topRight: { display: "flex", gap: 8, alignItems: "center" },
-  chip: { background: "var(--bg1)", color: "var(--tx2)", border: "none", borderRadius: 12, padding: "0 12px", height: 34, fontSize: 13, fontWeight: 600, cursor: "pointer" },
-  monthWrap: { position: "relative", display: "flex", alignItems: "center" },
-  monthSel: { appearance: "none", WebkitAppearance: "none", background: "var(--bg1)", color: "var(--tx1)", border: "none", borderRadius: 12, padding: "0 30px 0 12px", height: 34, fontSize: 15, fontWeight: 600, fontVariantNumeric: "tabular-nums" },
-  monthCaret: { position: "absolute", right: 10, pointerEvents: "none", color: "var(--tx2)", display: "flex" },
-  content: { padding: "18px 20px calc(110px + env(safe-area-inset-bottom))" },
-
-  hk: { fontSize: 14, fontWeight: 600, color: "var(--tx2)", marginTop: 10 },
-  bigRow: { display: "flex", alignItems: "baseline", gap: 4, marginTop: 10, flexWrap: "wrap" },
-  big: { fontSize: "clamp(40px, 13vw, 56px)", fontWeight: 700, letterSpacing: "-0.035em", lineHeight: 1, color: "var(--tx1)" },
-  bigUnit: { fontSize: 21, fontWeight: 600, color: "var(--tx2)" },
-  sayLine: { fontSize: 17, fontWeight: 600, marginTop: 18, lineHeight: 1.5 },
-  sayMeta: { fontSize: 14, color: "var(--tx3)", marginTop: 2 },
-
-  fold: { borderTop: "1px solid var(--hair)" },
-  foldEnd: { borderTop: "1px solid var(--hair)" },
-  foldBtn: { width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 0", minHeight: 56, background: "none", border: "none", color: "inherit", textAlign: "left" },
-  foldTitle: { fontSize: 16, fontWeight: 600, color: "var(--tx1)" },
-  foldSum: { fontSize: 13, color: "var(--tx3)", marginTop: 4, lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" },
-  foldBody: { paddingBottom: 16 },
-  chev: { width: 30, height: 30, borderRadius: 15, background: "var(--bg1)", color: "var(--tx2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "transform 0.25s" },
-
-  dot: { display: "inline-block", width: 8, height: 8, borderRadius: 4, marginRight: 7, flexShrink: 0, boxShadow: "0 0 0 1.5px var(--dot-ring)" },
-  lineItem: { display: "flex", alignItems: "baseline", fontSize: 14, padding: "6px 0", lineHeight: 1.5 },
-  kvRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "8px 0", fontSize: 14 },
-  kvRowTight: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, fontSize: 14 },
-  kvKey: { display: "inline-flex", alignItems: "center", color: "var(--tx2)", minWidth: 0 },
-  kvVal: { fontWeight: 600, color: "var(--tx1)", whiteSpace: "nowrap" },
-  note: { fontSize: 12.5, color: "var(--tx3)", marginTop: 4 },
-  cap: { fontSize: 12, fontWeight: 600, letterSpacing: 0.6, color: "var(--tx3)", margin: "30px 0 6px" },
-
-  cardGauge: { padding: "12px 0", borderTop: "1px solid var(--hair)" },
-  cardHead: { display: "flex", alignItems: "center", marginBottom: 10 },
-  cardNm: { fontWeight: 600, fontSize: 15, flex: 1 },
-  cardAmt: { fontWeight: 600, fontSize: 15 },
-  gaugeTrack: { position: "relative", height: 8, background: "var(--bg3)", borderRadius: 2, marginBottom: 20 },
-  gaugeFill: { position: "absolute", top: 0, left: 0, height: "100%", borderRadius: 2, transition: "width 0.5s" },
-  gaugeMark: { position: "absolute", top: -3, width: 2, height: 14, marginLeft: -1, background: "var(--hair2)", borderRadius: 1 },
-  gaugeLabel: { position: "absolute", top: 16, left: "50%", transform: "translateX(-50%)", fontSize: 11, color: "var(--tx3)", whiteSpace: "nowrap" },
-  bOk: { fontSize: 12.5, color: "var(--good)", marginTop: 3 },
-  bWait: { fontSize: 12.5, color: "var(--tx3)", marginTop: 3 },
-
-  prNum: { width: 20, height: 20, borderRadius: 10, background: "var(--bg3)", color: "var(--tx1)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, marginRight: 8, flexShrink: 0 },
-
-  fRow: { marginBottom: 16 },
-  label: { display: "block", fontSize: 13, fontWeight: 600, marginBottom: 7, color: "var(--tx2)" },
-  input: { width: "100%", height: 50, padding: "0 14px", borderRadius: 12, border: "1px solid var(--hair)", fontSize: 17, outline: "none", background: "var(--bg1)", color: "var(--tx1)" },
-  inputAlt: { width: "100%", height: 48, padding: "0 14px", borderRadius: 12, border: "1px solid var(--hair2)", fontSize: 16, outline: "none", background: "var(--field)", color: "var(--tx1)" },
-  seg: { display: "flex", gap: 4, background: "var(--bg1)", borderRadius: 12, padding: 4 },
-  segBtn: { flex: 1, height: 40, border: "none", borderRadius: 9, background: "transparent", color: "var(--tx3)", fontSize: 15, fontWeight: 600, cursor: "pointer" },
-  segAct: { background: "var(--bg3)", color: "var(--tx1)" },
-  cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
-  cardBtn: { display: "flex", alignItems: "center", height: 46, padding: "0 14px", border: "1.5px solid transparent", borderRadius: 12, background: "var(--bg1)", color: "var(--tx2)", fontSize: 15, fontWeight: 600, cursor: "pointer" },
-  cardBtnAct: { borderColor: "var(--tx1)", color: "var(--tx1)" },
-  autoCat: { marginTop: 7, fontSize: 13, color: "var(--tx2)", fontWeight: 600 },
-  submitBtn: { width: "100%", height: 54, border: "none", borderRadius: 14, background: "var(--action)", color: "var(--on-action)", fontSize: 17, fontWeight: 700, cursor: "pointer", marginTop: 6 },
-
-  histFilterRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6, marginBottom: 4, WebkitOverflowScrolling: "touch" as any, scrollbarWidth: "none" },
-  histChip: { flexShrink: 0, display: "inline-flex", alignItems: "center", height: 34, padding: "0 13px", border: "none", borderRadius: 12, background: "var(--bg1)", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", color: "var(--tx3)" },
-  histChipAct: { background: "var(--bg3)", color: "var(--tx1)" },
-  empty: { textAlign: "center", padding: 36, color: "var(--tx3)", fontSize: 14 },
-  hItem: { padding: "12px 0", borderTop: "1px solid var(--hair)" },
-  hMain: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 },
-  hName: { fontWeight: 600, fontSize: 15, color: "var(--tx1)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  hAmt: { fontWeight: 600, fontSize: 16, whiteSpace: "nowrap" },
-  hMeta: { display: "flex", gap: 6, alignItems: "center", fontSize: 12.5, color: "var(--tx3)", marginTop: 4, flexWrap: "wrap" },
-  iconBtn: { width: 30, height: 30, borderRadius: 15, background: "var(--bg1)", border: "none", color: "var(--tx2)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" },
-  catBadge: { background: "var(--bg1)", color: "var(--tx2)", padding: "3px 8px", borderRadius: 8, cursor: "pointer", fontSize: 12 },
-  catSel: { fontSize: 12, padding: "3px 4px", borderRadius: 8, border: "1px solid var(--hair2)", background: "var(--field)", color: "var(--tx1)" },
-  editOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 100 },
-  editModal: { background: "var(--bg1)", borderRadius: "22px 22px 0 0", padding: "20px 20px calc(20px + env(safe-area-inset-bottom))", width: "100%", maxWidth: 480 },
-  sheetTitle: { fontSize: 17, fontWeight: 700, marginBottom: 14 },
-
-  rptCard: { padding: "4px 0 10px", borderTop: "1px solid var(--hair)" },
-  barTrack: { height: 6, background: "var(--bg3)", borderRadius: 2, marginTop: 7 },
-  barFill: { height: "100%", background: "var(--tx2)", borderRadius: 2 },
-
-  tabBar: { position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 50, display: "flex", justifyContent: "center", gap: 8, background: "var(--bg0)", borderTop: "1px solid var(--hair)", padding: "8px 12px calc(8px + env(safe-area-inset-bottom))" },
-  tabBtn: { flex: 1, maxWidth: 110, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "4px 0", border: "none", background: "transparent", cursor: "pointer" },
-  loading: { display: "flex", alignItems: "center", justifyContent: "center", height: "60vh", color: "var(--tx3)" },
+  app: { fontFamily: "'Noto Sans KR','Noto Sans SC',sans-serif", maxWidth: 480, margin: "0 auto", background: "#f5f5f7", minHeight: "100vh", color: "#1a1a2e" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 16px 14px", background: "linear-gradient(135deg,#1a1a2e,#16213e)", color: "#fff", borderRadius: "0 0 18px 18px" },
+  title: { fontSize: 24, fontWeight: 900, margin: 0, letterSpacing: 1 },
+  subtitle: { fontSize: 11, opacity: 0.7, marginTop: 2 },
+  headerRight: { display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" },
+  langBtn: { background: "rgba(255,255,255,0.2)", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" },
+  monthPicker: { background: "rgba(255,255,255,0.15)", color: "#fff", border: "none", borderRadius: 6, padding: "4px 10px", fontSize: 13, fontWeight: 600 },
+  tabWrap: { padding: "10px 16px 0" },
+  tabBar: { display: "flex", gap: 6, background: "#e8e8ed", borderRadius: 14, padding: 4 },
+  tabBtn: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "8px 4px", border: "none", borderRadius: 10, background: "transparent", color: "#888", cursor: "pointer", transition: "all 0.2s" },
+  tabAct: { background: "#fff", color: "#1a1a2e", boxShadow: "0 1px 4px rgba(0,0,0,0.1)", fontWeight: 700 },
+  content: { padding: "12px 16px 80px" },
+  sumRow: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 },
+  sumCard: { borderRadius: 14, padding: 14, color: "#fff" },
+  sumLabel: { fontSize: 11, opacity: 0.85 },
+  sumVal: { fontSize: 18, fontWeight: 800, marginTop: 3 },
+  sumNote: { fontSize: 9, opacity: 0.7, marginTop: 3 },
+  compareBox: { background: "#fff", borderRadius: 12, padding: 14, marginBottom: 14, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
+  compareTitle: { fontWeight: 800, fontSize: 13, marginBottom: 8, textAlign: "center" },
+  advBox: { background: "linear-gradient(135deg,#fff9c4,#fff3e0)", borderRadius: 12, padding: 12, marginBottom: 14 },
+  advTitle: { fontWeight: 800, fontSize: 13, marginBottom: 6 },
+  advItem: { fontSize: 12, padding: "3px 0", lineHeight: 1.5 },
+  cardGauge: { background: "#fff", borderRadius: 11, padding: 12, marginBottom: 8, boxShadow: "0 1px 3px rgba(0,0,0,0.05)" },
+  cardHead: { display: "flex", alignItems: "center", gap: 6, marginBottom: 6 },
+  cardNm: { fontWeight: 700, fontSize: 13, flex: 1 },
+  cardAmt: { fontWeight: 800, fontSize: 15 },
+  gaugeTrack: { position: "relative", height: 7, background: "#e9ecef", borderRadius: 4, marginBottom: 6 },
+  gaugeFill: { position: "absolute", top: 0, left: 0, height: "100%", borderRadius: 4, transition: "width 0.5s" },
+  gaugeMark: { position: "absolute", top: -2, width: 2, height: 11, background: "#666", borderRadius: 1 },
+  gaugeLabel: { position: "absolute", top: 13, left: "50%", transform: "translateX(-50%)", fontSize: 9, color: "#999", whiteSpace: "nowrap" },
+  bOk: { fontSize: 11, color: "#27ae60", marginTop: 2 },
+  bWait: { fontSize: 11, color: "#888", marginTop: 2 },
+  secTitle: { fontWeight: 800, fontSize: 15, margin: "18px 0 8px", letterSpacing: -0.3 },
+  catRow: { display: "flex", justifyContent: "space-between", padding: "7px 10px", background: "#fff", borderRadius: 8, marginBottom: 5, fontSize: 13 },
+  prGuide: { background: "linear-gradient(135deg,#e8f5e9,#f1f8e9)", borderRadius: 12, padding: 12, marginBottom: 16 },
+  prTitle: { fontWeight: 800, fontSize: 13, marginBottom: 6 },
+  prItem: { display: "flex", alignItems: "center", gap: 6, padding: "5px 0", fontSize: 12 },
+  prNum: { width: 20, height: 20, borderRadius: "50%", background: "#1a1a2e", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, flexShrink: 0 },
+  prDone: { marginLeft: "auto", color: "#27ae60", fontWeight: 700, fontSize: 11 },
+  prLeft: { marginLeft: "auto", color: "#e74c3c", fontWeight: 600, fontSize: 11 },
+  prFree: { marginLeft: "auto", color: "#888", fontSize: 11 },
+  formBox: { background: "#fff", borderRadius: 14, padding: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
+  fRow: { marginBottom: 12 },
+  label: { display: "block", fontSize: 12, fontWeight: 700, marginBottom: 5, color: "#666" },
+  input: { width: "100%", padding: "9px 11px", borderRadius: 8, border: "1.5px solid #ddd", fontSize: 14, outline: "none", boxSizing: "border-box" as const, background: "#f8f9fa" },
+  togBtn: { flex: 1, padding: "8px", border: "2px solid #ddd", borderRadius: 9, background: "transparent", fontSize: 13, fontWeight: 600, cursor: "pointer" },
+  togAct: { borderColor: "#667eea", background: "#667eea15", color: "#667eea" },
+  cardGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 },
+  cardBtn: { display: "flex", alignItems: "center", gap: 5, padding: "9px", border: "2px solid #ddd", borderRadius: 9, background: "transparent", fontSize: 12, fontWeight: 600, cursor: "pointer" },
+  autoCat: { marginTop: 3, fontSize: 11, color: "#667eea", fontWeight: 600 },
+  submitBtn: { width: "100%", padding: "12px", border: "none", borderRadius: 10, background: "linear-gradient(135deg,#667eea,#764ba2)", color: "#fff", fontSize: 15, fontWeight: 800, cursor: "pointer", marginTop: 2 },
+  hCount: { fontSize: 13, color: "#888", marginBottom: 10, fontWeight: 600 },
+  histFilterRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, WebkitOverflowScrolling: "touch" as any },
+  histChip: { flexShrink: 0, padding: "6px 12px", border: "1.5px solid #ddd", borderRadius: 20, background: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" as const, color: "#666" },
+  histChipAct: { borderColor: "#667eea", background: "#667eea15", color: "#667eea" },
+  empty: { textAlign: "center", padding: 36, color: "#bbb", fontSize: 13 },
+  hItem: { background: "#fff", borderRadius: 10, padding: 10, marginBottom: 7, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" },
+  hTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 },
+  hDate: { fontSize: 10, color: "#999" },
+  editBtn: { background: "none", border: "none", color: "#667eea", fontSize: 14, cursor: "pointer", padding: "2px 4px" },
+  delBtn: { background: "none", border: "none", color: "#ccc", fontSize: 13, cursor: "pointer", padding: "2px 4px" },
+  hMain: { display: "flex", justifyContent: "space-between", alignItems: "center" },
+  hName: { fontWeight: 700, fontSize: 14, marginBottom: 3 },
+  hMeta: { display: "flex", gap: 6, alignItems: "center", fontSize: 11 },
+  hAmt: { fontWeight: 800, fontSize: 16, whiteSpace: "nowrap" },
+  catBadge: { background: "#f0f0f0", padding: "2px 6px", borderRadius: 5, cursor: "pointer", fontSize: 10 },
+  catSel: { fontSize: 11, padding: "2px 3px", borderRadius: 5, border: "1px solid #ddd" },
+  editOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 },
+  editModal: { background: "#fff", borderRadius: 16, padding: 20, width: "90%", maxWidth: 400 },
+  rptTotal: { textAlign: "center", padding: 18, background: "#fff", borderRadius: 14, marginBottom: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
+  settleBox: { background: "linear-gradient(135deg,#e3f2fd,#e8eaf6)", borderRadius: 12, padding: 14, marginBottom: 14, textAlign: "center" },
+  settleAmt: { fontSize: 26, fontWeight: 800, margin: "6px 0", color: "#1565c0" },
+  rptCard: { background: "#fff", borderRadius: 9, padding: 10, marginBottom: 7 },
+  loading: { display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" },
 };

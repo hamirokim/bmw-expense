@@ -1,43 +1,13 @@
-/* 김가네 v5 디자인 토큰. 폰의 라이트/다크 설정을 그대로 따른다(검정 고정 아님). */
-:root {
-  color-scheme: light dark;
-  /* 라이트 */
-  --bg0: #F2F2F7; --bg1: #FFFFFF; --bg2: #FFFFFF; --bg3: #E5E5EA;
-  --hair: #D1D1D6; --hair2: #C7C7CC;
-  --tx1: #1C1C1E; --tx2: #4A4A50; --tx3: #6E6E76;
-  --warn: #A85A00; --bad: #C4271B; --good: #1F7A35;
-  --action: #1C1C1E; --on-action: #FFFFFF;
-  --dot-ring: transparent;
-  --field: #F2F2F7;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg0: #000000; --bg1: #151517; --bg2: #1C1C1F; --bg3: #2C2C30;
-    --hair: #2C2C30; --hair2: #3A3A3E;
-    --tx1: #F5F5F7; --tx2: #B9B9C0; --tx3: #8C8C94;
-    --warn: #FFB547; --bad: #FF6B60; --good: #43D86F;
-    --action: #F5F5F7; --on-action: #000000;
-    --dot-ring: rgba(255,255,255,0.22);
-    --field: #1C1C1F;
-  }
-}
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-html, body {
-  background: var(--bg0);
-  color: var(--tx1);
-}
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Noto Sans SC', sans-serif;
-  font-variant-numeric: tabular-nums;
+  font-family: 'Noto Sans KR', 'Noto Sans SC', sans-serif;
+  background: #f5f5f7;
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
 }
 input, select, button {
   font-family: inherit;
-  font-variant-numeric: inherit;
 }
-input::placeholder { color: var(--tx3); }
