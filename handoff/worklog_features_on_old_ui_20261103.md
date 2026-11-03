@@ -30,3 +30,7 @@
 
 ## 배포
 - 아직 안 함. 로이 허락 후 main 푸시 → Vercel.
+
+## 배포 완료 (2026-11-03 09:39 KST)
+- 로이 "배포해" → 커밋 eb1e94a main 푸시, Vercel success.
+- 되돌리기: `git revert eb1e94a && git push origin main` (화면·기능만, 데이터 영향 없음).
